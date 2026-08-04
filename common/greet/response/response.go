@@ -6,6 +6,8 @@ import (
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
+const successCode = http.StatusOK
+
 type Body struct {
 	Code int         `json:"code"`
 	Msg  string      `json:"msg"`
@@ -18,6 +20,7 @@ func Response(w http.ResponseWriter, resp interface{}, err error) {
 		body.Code = -1
 		body.Msg = err.Error()
 	} else {
+		body.Code = successCode
 		body.Msg = "OK"
 		body.Data = resp
 	}
