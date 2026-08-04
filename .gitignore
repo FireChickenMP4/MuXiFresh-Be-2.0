@@ -1,4 +1,5 @@
 *.yaml
+!.github/workflows/*.yaml
 gen_token
 datahub
 .idea
