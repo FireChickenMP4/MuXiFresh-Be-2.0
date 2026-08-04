@@ -29,6 +29,7 @@ func main() {
 	defer server.Stop()
 
 	ctx := svc.NewServiceContext(c)
+	defer ctx.KqPusher.Close()
 	handler.RegisterHandlers(server, ctx)
 
 	//加载captcha redis 和 配置

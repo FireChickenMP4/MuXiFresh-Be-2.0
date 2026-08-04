@@ -26,7 +26,7 @@ func NewSendVerificationCodeLogic(ctx context.Context, svcCtx *svc.ServiceContex
 
 func (l *SendVerificationCodeLogic) SendVerificationCode(req *types.SendEmailCodeReq) (resp *types.SendEmailCodeResp, err error) {
 	body, _ := json.Marshal(req)
-	if err = l.svcCtx.KqPusher.Push(string(body)); err != nil {
+	if err = l.svcCtx.KqPusher.Push(l.ctx, string(body)); err != nil {
 		return nil, err
 	}
 	return &types.SendEmailCodeResp{Flag: true}, nil
