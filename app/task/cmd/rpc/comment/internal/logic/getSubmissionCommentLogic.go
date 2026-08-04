@@ -40,7 +40,13 @@ func (l *GetSubmissionCommentLogic) GetSubmissionComment(in *pb.GetSubmissionCom
 		if err != nil {
 			return nil, err
 		}
-		group := entryForm.Grade + "级" + convert.GroupCvtChinese(entryForm.Group) + "成员"
+		var group string
+		if userInfo.UserType == "freshman" {
+			group = entryForm.Grade + "级" + convert.GroupCvtChinese(entryForm.Group) + "新生"
+		} else {
+			group = entryForm.Grade + "级" + convert.GroupCvtChinese(entryForm.Group) + "成员"
+		}
+
 		cmtsWithUserInfo = append(cmtsWithUserInfo, &pb.Comment{
 			CommentID:  comment.ID.String()[10:34],
 			Avatar:     userInfo.Avatar,

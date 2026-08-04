@@ -5,6 +5,7 @@ import (
 	"MuXiFresh-Be-2.0/app/userauth/cmd/api/internal/common/consumer"
 	"MuXiFresh-Be-2.0/app/userauth/cmd/api/internal/common/email"
 	"MuXiFresh-Be-2.0/app/userauth/cmd/api/internal/common/tube"
+	"MuXiFresh-Be-2.0/common/nacos"
 	"flag"
 	"fmt"
 	"github.com/zeromicro/go-zero/core/threading"
@@ -13,7 +14,6 @@ import (
 	"MuXiFresh-Be-2.0/app/userauth/cmd/api/internal/handler"
 	"MuXiFresh-Be-2.0/app/userauth/cmd/api/internal/svc"
 
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
 )
 
@@ -23,14 +23,18 @@ func main() {
 	flag.Parse()
 
 	var c config.Config
-	conf.MustLoad(*configFile, &c)
+	nacos.MustLoad(nacos.LoadOption{
+		Group:  "PROD",
+		DataId: "user-auth",
+		Target: &c,
+	})
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
 
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)
-	
+
 	//加载captcha redis 和 配置
 	code.Load(c, ctx)
 	//加载邮箱配置

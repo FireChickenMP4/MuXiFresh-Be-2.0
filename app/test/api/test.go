@@ -1,6 +1,7 @@
 package main
 
 import (
+	"MuXiFresh-Be-2.0/common/nacos"
 	"flag"
 	"fmt"
 
@@ -8,17 +9,20 @@ import (
 	"MuXiFresh-Be-2.0/app/test/api/internal/handler"
 	"MuXiFresh-Be-2.0/app/test/api/internal/svc"
 
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
 )
 
-var configFile = flag.String("f", "etc/test-api.yaml", "the config file")
+//var configFile = flag.String("f", "etc/test-api.yaml", "the config file")
 
 func main() {
 	flag.Parse()
 
 	var c config.Config
-	conf.MustLoad(*configFile, &c)
+	nacos.MustLoad(nacos.LoadOption{
+		Group:  "PROD",
+		DataId: "test-api",
+		Target: &c,
+	})
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

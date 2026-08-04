@@ -1,6 +1,7 @@
 package main
 
 import (
+	"MuXiFresh-Be-2.0/common/nacos"
 	"flag"
 	"fmt"
 
@@ -8,7 +9,6 @@ import (
 	"MuXiFresh-Be-2.0/app/schedule/api/internal/handler"
 	"MuXiFresh-Be-2.0/app/schedule/api/internal/svc"
 
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
 )
 
@@ -18,7 +18,11 @@ func main() {
 	flag.Parse()
 
 	var c config.Config
-	conf.MustLoad(*configFile, &c)
+	nacos.MustLoad(nacos.LoadOption{
+		Group:  "PROD",
+		DataId: "schedule-api",
+		Target: &c,
+	})
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

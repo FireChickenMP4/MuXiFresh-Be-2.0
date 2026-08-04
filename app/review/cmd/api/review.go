@@ -4,10 +4,10 @@ import (
 	"MuXiFresh-Be-2.0/app/review/cmd/api/internal/config"
 	"MuXiFresh-Be-2.0/app/review/cmd/api/internal/handler"
 	"MuXiFresh-Be-2.0/app/review/cmd/api/internal/svc"
+	"MuXiFresh-Be-2.0/common/nacos"
 	"flag"
 	"fmt"
 
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
 )
 
@@ -17,7 +17,11 @@ func main() {
 	flag.Parse()
 
 	var c config.Config
-	conf.MustLoad(*configFile, &c)
+	nacos.MustLoad(nacos.LoadOption{
+		Group:  "PROD",
+		DataId: "review",
+		Target: &c,
+	})
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
