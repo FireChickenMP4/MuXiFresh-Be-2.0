@@ -19,7 +19,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:              c,
 		KqPusher:            kq.NewPusher(c.KqConf.Brokers, c.KqConf.Topic),
-		RedisClient:         redis.MustNewRedis(c.RedisConf),
+		RedisClient:         redis.MustNewRedis(c.Infra.Redis),
 		AccountCenterClient: accountcenterclient.NewAccountCenterClient(zrpc.MustNewClient(c.AccountCenterConf)),
 	}
 }

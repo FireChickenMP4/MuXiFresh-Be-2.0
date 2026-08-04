@@ -7,7 +7,6 @@ import (
 	"MuXiFresh-Be-2.0/common/globalKey"
 	"MuXiFresh-Be-2.0/common/tool"
 	"fmt"
-	"github.com/jinzhu/copier"
 	"github.com/jordan-wright/email"
 	"net/smtp"
 	"net/textproto"
@@ -23,7 +22,12 @@ type EmailInfo struct {
 var eInfo EmailInfo
 
 func Load(c config.Config) {
-	copier.Copy(&eInfo, c.EmailConf)
+	eInfo = EmailInfo{
+		Host:     c.Infra.SMTP.Host,
+		Port:     c.Infra.SMTP.Port,
+		UserName: c.Infra.SMTP.UserName,
+		Password: c.Infra.SMTP.Password,
+	}
 }
 
 func Send(Email string, Type string) error {

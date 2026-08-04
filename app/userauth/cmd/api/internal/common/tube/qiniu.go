@@ -20,10 +20,10 @@ var Q Qiniu
 
 func Load(c config.Config) {
 	Q = Qiniu{
-		AccessKey: c.Oss.AccessKey,
-		SecretKey: c.Oss.SecretKey,
-		Bucket:    c.Oss.BucketName,
-		Domain:    c.Oss.DomainName,
+		AccessKey: c.Infra.ObjectStorage.AccessKey,
+		SecretKey: c.Infra.ObjectStorage.SecretKey,
+		Bucket:    c.Infra.ObjectStorage.BucketName,
+		Domain:    c.Infra.ObjectStorage.DomainName,
 	}
 }
 

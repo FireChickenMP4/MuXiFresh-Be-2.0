@@ -19,7 +19,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:              c,
 		FormClient:          entryformclient.NewEntryFormClient(zrpc.MustNewClient(c.FormConf)),
-		UserInfoModelClient: externalModel.NewUserInfoModel(c.MongoDBConf.URL, c.MongoDBConf.DB, "userinfo"),
-		ScheduleModel:       schedulemodel.NewScheduleModel(c.MongoDBConf.URL, c.MongoDBConf.DB, "schedule"),
+		UserInfoModelClient: externalModel.NewUserInfoModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "userinfo"),
+		ScheduleModel:       schedulemodel.NewScheduleModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "schedule"),
 	}
 }

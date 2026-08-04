@@ -7,8 +7,8 @@ import (
 	"MuXiFresh-Be-2.0/app/intro/api/internal/config"
 	"MuXiFresh-Be-2.0/app/intro/api/internal/handler"
 	"MuXiFresh-Be-2.0/app/intro/api/internal/svc"
+	"MuXiFresh-Be-2.0/common/nacos"
 
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
 )
 
@@ -18,7 +18,7 @@ func main() {
 	flag.Parse()
 
 	var c config.Config
-	conf.MustLoad(*configFile, &c)
+	nacos.MustLoadService("intro-api", &c, &c.Infra)
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

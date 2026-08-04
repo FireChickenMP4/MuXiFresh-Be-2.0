@@ -22,11 +22,7 @@ func main() {
 	flag.Parse()
 
 	var c config.Config
-	nacos.MustLoad(nacos.LoadOption{
-		Group:  "PROD",
-		DataId: "assignment",
-		Target: &c,
-	})
+	nacos.MustLoadService("assignment", &c, &c.Infra)
 	ctx := svc.NewServiceContext(c)
 
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {

@@ -18,11 +18,7 @@ func main() {
 	flag.Parse()
 
 	var c config.Config
-	nacos.MustLoad(nacos.LoadOption{
-		Group:  "PROD",
-		DataId: "form-api",
-		Target: &c,
-	})
+	nacos.MustLoadService("form-api", &c, &c.Infra)
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

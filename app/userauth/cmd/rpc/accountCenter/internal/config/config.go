@@ -1,15 +1,20 @@
 package config
 
-import "github.com/zeromicro/go-zero/zrpc"
+import (
+	"MuXiFresh-Be-2.0/common/infra"
+
+	"github.com/zeromicro/go-zero/zrpc"
+)
 
 type Config struct {
 	zrpc.RpcServerConf
-	MongoConf struct {
-		URL string
-		DB  string
-	}
+	Infra           infra.Config
 	DefaultUserInfo struct {
 		Avatar   string
 		NickName string
 	}
+}
+
+func (c *Config) ApplyInfra() {
+	c.Infra.ApplyEtcd(&c.RpcServerConf.Etcd)
 }

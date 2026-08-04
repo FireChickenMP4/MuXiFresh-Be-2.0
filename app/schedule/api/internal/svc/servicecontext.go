@@ -17,6 +17,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:         c,
 		ScheduleClient: scheduleclient.NewScheduleClient(zrpc.MustNewClient(c.ScheduleConf)),
-		UserInfoClient: userauthModel.NewUserInfoModel(c.MongoDBConf.URL, c.MongoDBConf.DB, "userinfo"),
+		UserInfoClient: userauthModel.NewUserInfoModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "userinfo"),
 	}
 }
