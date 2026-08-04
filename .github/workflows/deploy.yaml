@@ -1,0 +1,346 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/form/**'
+      - 'app/intro/**'
+      - 'app/review/**'
+      - 'app/schedule/**'
+      - 'app/task/**'
+      - 'app/test/**'
+      - 'app/user/**'
+      - 'app/userauth/**'
+      - 'common/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/deploy.yaml'
+
+permissions:
+  contents: read
+
+# Only the latest waiting main-branch revision is relevant for deployment. The
+# active revision is never cancelled, and every service selected within it is
+# deployed by the serial matrix below.
+concurrency:
+  group: muxifresh-prod-deploy
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    if: github.repository == 'Muxi-X/MuXiFresh-Be-2.0'
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.services.outputs.services }}
+      version: ${{ steps.version.outputs.id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Select services
+        id: services
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          all_services=(
+            form
+            intro
+            review
+            schedule
+            task
+            test
+            user
+            userauth
+          )
+
+          if [[ "$BEFORE_SHA" =~ ^0+$ ]] || ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            changed_files="$(git ls-tree -r --name-only "$GITHUB_SHA")"
+          else
+            changed_files="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")"
+          fi
+
+          deploy_all=false
+          while IFS= read -r file; do
+            case "$file" in
+              common/*|go.mod|go.sum|.github/workflows/deploy.yaml)
+                deploy_all=true
+                ;;
+            esac
+          done <<< "$changed_files"
+
+          selected_services=()
+          for service in "${all_services[@]}"; do
+            if [[ "$deploy_all" == true ]] || grep -q "^app/${service}/" <<< "$changed_files"; then
+              selected_services+=("$service")
+            fi
+          done
+
+          if ((${#selected_services[@]} == 0)); then
+            services_json='[]'
+          else
+            services_json="$(printf '%s\n' "${selected_services[@]}" | jq -R . | jq -sc .)"
+          fi
+          echo "services=$services_json" >> "$GITHUB_OUTPUT"
+
+      - name: Get commit id
+        id: version
+        run: echo "id=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+  build:
+    if: needs.changes.outputs.services != '[]'
+    needs: changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # The repository Dockerfiles package pre-built binaries, so compile the
+      # selected service before creating its image. Empty config files only
+      # satisfy the legacy COPY instructions; runtime config comes from Nacos.
+      - name: Compile ${{ matrix.service }}
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: |
+          set -euo pipefail
+          export CGO_ENABLED=0
+
+          case "$SERVICE" in
+            form)
+              go build -o app/form/rpc/form ./app/form/rpc
+              go build -o app/form/api/form ./app/form/api
+              mkdir -p app/form/rpc/etc app/form/api/etc
+              : > app/form/rpc/etc/form.yaml
+              : > app/form/api/etc/form-api.yaml
+              ;;
+            intro)
+              go build -o app/intro/rpc/intro ./app/intro/rpc
+              go build -o app/intro/api/intro ./app/intro/api
+              mkdir -p app/intro/rpc/etc app/intro/api/etc
+              : > app/intro/rpc/etc/intro.yaml
+              : > app/intro/api/etc/intro-api.yaml
+              ;;
+            review)
+              go build -o app/review/cmd/api/review ./app/review/cmd/api
+              mkdir -p app/review/cmd/api/etc
+              : > app/review/cmd/api/etc/review.yaml
+              ;;
+            schedule)
+              go build -o app/schedule/rpc/schedule ./app/schedule/rpc
+              go build -o app/schedule/api/schedule ./app/schedule/api
+              mkdir -p app/schedule/rpc/etc app/schedule/api/etc
+              : > app/schedule/rpc/etc/schedule.yaml
+              : > app/schedule/api/etc/schedule-api.yaml
+              ;;
+            task)
+              go build -o app/task/cmd/rpc/assignment/assignment ./app/task/cmd/rpc/assignment
+              go build -o app/task/cmd/rpc/comment/comment ./app/task/cmd/rpc/comment
+              go build -o app/task/cmd/rpc/submission/submission ./app/task/cmd/rpc/submission
+              go build -o app/task/cmd/api/task ./app/task/cmd/api
+              mkdir -p \
+                app/task/cmd/rpc/assignment/etc \
+                app/task/cmd/rpc/comment/etc \
+                app/task/cmd/rpc/submission/etc \
+                app/task/cmd/api/etc
+              : > app/task/cmd/rpc/assignment/etc/assignment.yaml
+              : > app/task/cmd/rpc/comment/etc/comment.yaml
+              : > app/task/cmd/rpc/submission/etc/submission.yaml
+              : > app/task/cmd/api/etc/task.yaml
+              ;;
+            test)
+              go build -o app/test/rpc/test ./app/test/rpc
+              go build -o app/test/api/test ./app/test/api
+              mkdir -p app/test/rpc/etc app/test/api/etc
+              : > app/test/rpc/etc/test.yaml
+              : > app/test/api/etc/test-api.yaml
+              ;;
+            user)
+              go build -o app/user/cmd/rpc/user/user ./app/user/cmd/rpc/user
+              go build -o app/user/cmd/api/user ./app/user/cmd/api
+              mkdir -p app/user/cmd/rpc/user/etc app/user/cmd/api/etc
+              : > app/user/cmd/rpc/user/etc/user.yaml
+              : > app/user/cmd/api/etc/user.yaml
+              ;;
+            userauth)
+              go build -o app/userauth/cmd/rpc/accountCenter/accountCenter ./app/userauth/cmd/rpc/accountCenter
+              go build -o app/userauth/cmd/api/user-auth ./app/userauth/cmd/api
+              mkdir -p app/userauth/cmd/rpc/accountCenter/etc app/userauth/cmd/api/etc
+              : > app/userauth/cmd/rpc/accountCenter/etc/accountCenter.yaml
+              : > app/userauth/cmd/api/etc/user-auth.yaml
+              ;;
+            *)
+              echo "Unsupported service: $SERVICE" >&2
+              exit 1
+              ;;
+          esac
+
+          # Configuration is now loaded from Nacos. Remove obsolete -f flags
+          # from the image's startup script, including services that no longer
+          # register that flag.
+          sed -i -E 's/[[:space:]]+-f[[:space:]]+etc\/[^[:space:]]+//g' "app/${SERVICE}/start.sh"
+
+      - name: Log in to Aliyun Docker Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+          registry: ${{ secrets.ALIYUN_REGISTRY }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app/${{ matrix.service }}
+          file: ./app/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_NAMESPACE }}/muxifresh-${{ matrix.service }}:${{ needs.changes.outputs.version }}
+
+  deploy:
+    if: needs.changes.outputs.services != '[]'
+    needs:
+      - changes
+      - build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    steps:
+      - name: Set up SSH key
+        env:
+          PROD_SERVER: ${{ secrets.PROD_SERVER }}
+          SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$PROD_SERVER" >> ~/.ssh/known_hosts
+
+      - name: Deploy ${{ matrix.service }}
+        env:
+          PROD_DEPLOY_DIR: ${{ secrets.PROD_DEPLOY_DIR }}
+          PROD_SERVER: ${{ secrets.PROD_SERVER }}
+          PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+          REGISTRY: ${{ secrets.ALIYUN_REGISTRY }}
+          REGISTRY_PASSWORD: ${{ secrets.ALIYUN_PASSWORD }}
+          REGISTRY_USER: ${{ secrets.ALIYUN_USERNAME }}
+          NACOS_ADDR: ${{ secrets.NACOS_ADDR }}
+          NACOS_NAMESPACE: ${{ secrets.NACOS_NAMESPACE }}
+          NACOS_PASSWORD: ${{ secrets.NACOS_PASSWORD }}
+          NACOS_USERNAME: ${{ secrets.NACOS_USERNAME }}
+          SERVICE: ${{ matrix.service }}
+          VERSION: ${{ needs.changes.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          deploy_dir_b64="$(printf '%s' "$PROD_DEPLOY_DIR" | base64 -w 0)"
+          nacos_addr_b64="$(printf '%s' "$NACOS_ADDR" | base64 -w 0)"
+          nacos_namespace_b64="$(printf '%s' "$NACOS_NAMESPACE" | base64 -w 0)"
+          nacos_password_b64="$(printf '%s' "$NACOS_PASSWORD" | base64 -w 0)"
+          nacos_username_b64="$(printf '%s' "$NACOS_USERNAME" | base64 -w 0)"
+          registry_b64="$(printf '%s' "$REGISTRY" | base64 -w 0)"
+          registry_user_b64="$(printf '%s' "$REGISTRY_USER" | base64 -w 0)"
+          registry_password_b64="$(printf '%s' "$REGISTRY_PASSWORD" | base64 -w 0)"
+
+          {
+            printf "SERVICE='%s'\n" "$SERVICE"
+            printf "VERSION='%s'\n" "$VERSION"
+            printf "DEPLOY_DIR_B64='%s'\n" "$deploy_dir_b64"
+            printf "NACOS_ADDR_B64='%s'\n" "$nacos_addr_b64"
+            printf "NACOS_NAMESPACE_B64='%s'\n" "$nacos_namespace_b64"
+            printf "NACOS_PASSWORD_B64='%s'\n" "$nacos_password_b64"
+            printf "NACOS_USERNAME_B64='%s'\n" "$nacos_username_b64"
+            printf "REGISTRY_B64='%s'\n" "$registry_b64"
+            printf "REGISTRY_USER_B64='%s'\n" "$registry_user_b64"
+            printf "REGISTRY_PASSWORD_B64='%s'\n" "$registry_password_b64"
+            cat << 'REMOTE_SCRIPT'
+          set -euo pipefail
+
+          DEPLOY_DIR="$(printf '%s' "$DEPLOY_DIR_B64" | base64 -d)"
+          NACOS_ADDR="$(printf '%s' "$NACOS_ADDR_B64" | base64 -d)"
+          NACOS_NAMESPACE="$(printf '%s' "$NACOS_NAMESPACE_B64" | base64 -d)"
+          NACOS_PASSWORD="$(printf '%s' "$NACOS_PASSWORD_B64" | base64 -d)"
+          NACOS_USERNAME="$(printf '%s' "$NACOS_USERNAME_B64" | base64 -d)"
+          REGISTRY="$(printf '%s' "$REGISTRY_B64" | base64 -d)"
+          REGISTRY_USER="$(printf '%s' "$REGISTRY_USER_B64" | base64 -d)"
+          REGISTRY_PASSWORD="$(printf '%s' "$REGISTRY_PASSWORD_B64" | base64 -d)"
+
+          cd -- "$DEPLOY_DIR"
+
+          COMPOSE_SERVICE="$SERVICE"
+          case "$SERVICE" in
+            userauth)
+              COMPOSE_SERVICE=auth
+              ;;
+            test)
+              COMPOSE_SERVICE=exam
+              ;;
+          esac
+
+          (
+            flock -x 200
+            touch .env
+
+            set_env() {
+              local key="$1"
+              local value="$2"
+              sed -i "/^${key}=/d" .env
+              printf '%s=%s\n' "$key" "$value" >> .env
+            }
+
+            for version_key in FORM INTRO REVIEW SCHEDULE TASK TEST USER USERAUTH; do
+              if ! grep -q "^${version_key}=" .env; then
+                printf '%s=bootstrap\n' "$version_key" >> .env
+              fi
+            done
+
+            set_env NACOS_ADDR "$NACOS_ADDR"
+            set_env NACOS_NAMESPACE "$NACOS_NAMESPACE"
+            set_env NACOS_USERNAME "$NACOS_USERNAME"
+            set_env NACOS_PASSWORD "$NACOS_PASSWORD"
+            set_env NACOS_GROUP PROD
+            set_env NACOS_INFRA_GROUP PROD
+            set_env NACOS_INFRA_DATA_ID infra
+
+            echo "$REGISTRY_PASSWORD" | docker login \
+              --username="$REGISTRY_USER" \
+              --password-stdin \
+              "$REGISTRY"
+
+            KEY="$(printf '%s' "$SERVICE" | tr '[:lower:]-' '[:upper:]_')"
+            if grep -q "^${KEY}=" .env; then
+              sed -i "s/^${KEY}=.*/${KEY}=${VERSION}/" .env
+            else
+              echo "${KEY}=${VERSION}" >> .env
+            fi
+
+            docker compose pull "$COMPOSE_SERVICE"
+            docker compose up -d "$COMPOSE_SERVICE"
+            docker image prune -a -f --filter "until=24h"
+          ) 200>/tmp/muxifresh_deploy.lock
+          REMOTE_SCRIPT
+          } | ssh -o StrictHostKeyChecking=no "$PROD_SERVER_USER@$PROD_SERVER" bash -s
