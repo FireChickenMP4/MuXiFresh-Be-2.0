@@ -23,11 +23,7 @@ func main() {
 	flag.Parse()
 
 	var c config.Config
-	nacos.MustLoad(nacos.LoadOption{
-		Group:  "PROD",
-		DataId: "user-auth",
-		Target: &c,
-	})
+	nacos.MustLoadService("user-auth", &c, &c.Infra)
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

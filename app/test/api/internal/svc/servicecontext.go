@@ -22,7 +22,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Config:         c,
 		TestClient:     testclient.NewTestClient(zrpc.MustNewClient(c.TestConf)),
 		UserClient:     userclient.NewUserClient(zrpc.MustNewClient(c.UserConf)),
-		FormClient:     model.NewEntryFormModel(c.MongoDBConf.URL, c.MongoDBConf.DB, "entry_form"),
-		UserInfoClient: userauthModel.NewUserInfoModel(c.MongoDBConf.URL, c.MongoDBConf.DB, "userinfo"),
+		FormClient:     model.NewEntryFormModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "entry_form"),
+		UserInfoClient: userauthModel.NewUserInfoModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "userinfo"),
 	}
 }

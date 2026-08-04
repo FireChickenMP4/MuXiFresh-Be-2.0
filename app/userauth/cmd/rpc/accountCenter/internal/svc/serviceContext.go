@@ -14,7 +14,7 @@ type ServiceContext struct {
 func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:         c,
-		UserInfoClient: model.NewUserInfoModel(c.MongoConf.URL, c.MongoConf.DB, "userinfo"),
-		UserAuthClient: model.NewUserAuthModel(c.MongoConf.URL, c.MongoConf.DB, "userauth"),
+		UserInfoClient: model.NewUserInfoModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "userinfo"),
+		UserAuthClient: model.NewUserAuthModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "userauth"),
 	}
 }

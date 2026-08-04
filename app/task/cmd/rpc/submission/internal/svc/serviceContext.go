@@ -18,9 +18,9 @@ type ServiceContext struct {
 func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:          c,
-		SubmissionModel: model.NewSubmissionModel(c.MongoConf.URL, c.MongoConf.DB, "submission"),
-		EntryFormModel:  externalModel.NewEntryFormModel(c.MongoConf.URL, c.MongoConf.DB, "entry_form"),
-		UserInfoModel:   userauthModel.NewUserInfoModel(c.MongoConf.URL, c.MongoConf.DB, "userinfo"),
-		AssignmentModel: model.NewAssignmentModel(c.MongoConf.URL, c.MongoConf.DB, "assignment"),
+		SubmissionModel: model.NewSubmissionModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "submission"),
+		EntryFormModel:  externalModel.NewEntryFormModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "entry_form"),
+		UserInfoModel:   userauthModel.NewUserInfoModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "userinfo"),
+		AssignmentModel: model.NewAssignmentModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "assignment"),
 	}
 }

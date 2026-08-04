@@ -8,8 +8,8 @@ import (
 	"MuXiFresh-Be-2.0/app/intro/rpc/internal/server"
 	"MuXiFresh-Be-2.0/app/intro/rpc/internal/svc"
 	"MuXiFresh-Be-2.0/app/intro/rpc/pb"
+	"MuXiFresh-Be-2.0/common/nacos"
 
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
@@ -22,7 +22,7 @@ func main() {
 	flag.Parse()
 
 	var c config.Config
-	conf.MustLoad(*configFile, &c)
+	nacos.MustLoadService("intro-rpc", &c, &c.Infra)
 	ctx := svc.NewServiceContext(c)
 
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {

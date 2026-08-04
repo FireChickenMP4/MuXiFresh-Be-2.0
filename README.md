@@ -1,5 +1,7 @@
 # 木犀招新系统 v2
 
+Nacos 的服务配置与基础设施配置约定见 [deploy/nacos/README.md](deploy/nacos/README.md)。
+
 基于 `go-zero` 的木犀招新系统后端仓库
 
 ## 服务

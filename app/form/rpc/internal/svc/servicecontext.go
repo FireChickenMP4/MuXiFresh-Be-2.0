@@ -13,6 +13,6 @@ type ServiceContext struct {
 func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:     c,
-		FormClient: model.NewEntryFormModel(c.MongoDBConf.URL, c.MongoDBConf.DB, "entry_form"),
+		FormClient: model.NewEntryFormModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "entry_form"),
 	}
 }

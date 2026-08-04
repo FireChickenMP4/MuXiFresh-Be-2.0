@@ -20,9 +20,9 @@ type ServiceContext struct {
 func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:         c,
-		EntryFormModel: externalModel2.NewEntryFormModel(c.MongoConf.URL, c.MongoConf.DB, "entry_form"),
+		EntryFormModel: externalModel2.NewEntryFormModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "entry_form"),
 		UserClient:     userclient.NewUserClient(zrpc.MustNewClient(c.UserConf)),
-		ScheduleClient: externalModel3.NewScheduleModel(c.MongoConf.URL, c.MongoConf.DB, "schedule"),
-		UserInfoModel:  externalModel1.NewUserInfoModel(c.MongoConf.URL, c.MongoConf.DB, "userinfo"),
+		ScheduleClient: externalModel3.NewScheduleModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "schedule"),
+		UserInfoModel:  externalModel1.NewUserInfoModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "userinfo"),
 	}
 }

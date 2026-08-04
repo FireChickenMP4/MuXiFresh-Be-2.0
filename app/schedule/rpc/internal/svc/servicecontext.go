@@ -17,8 +17,8 @@ type ServiceContext struct {
 func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:          c,
-		ScheduleClient:  model.NewScheduleModel(c.MongoDBConf.URL, c.MongoDBConf.DB, "schedule"),
-		EntryFormClient: formmodel.NewEntryFormModel(c.MongoDBConf.URL, c.MongoDBConf.DB, "entry_form"),
-		UserInfoClient:  userauthModel.NewUserInfoModel(c.MongoDBConf.URL, c.MongoDBConf.DB, "userinfo"),
+		ScheduleClient:  model.NewScheduleModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "schedule"),
+		EntryFormClient: formmodel.NewEntryFormModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "entry_form"),
+		UserInfoClient:  userauthModel.NewUserInfoModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "userinfo"),
 	}
 }
