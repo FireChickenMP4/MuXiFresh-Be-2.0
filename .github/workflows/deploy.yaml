@@ -312,7 +312,7 @@ jobs:
               printf '%s=%s\n' "$key" "$value" >> .env
             }
 
-            for version_key in FORM INTRO REVIEW SCHEDULE TASK TEST USER USERAUTH; do
+            for version_key in FORM INTRO REVIEW SCHEDULE TASK TEST USER_VERSION USERAUTH; do
               if ! grep -q "^${version_key}=" .env; then
                 printf '%s=bootstrap\n' "$version_key" >> .env
               fi
@@ -331,7 +331,11 @@ jobs:
               --password-stdin \
               "$REGISTRY"
 
-            KEY="$(printf '%s' "$SERVICE" | tr '[:lower:]-' '[:upper:]_')"
+            if [[ "$SERVICE" == "user" ]]; then
+              KEY="USER_VERSION"
+            else
+              KEY="$(printf '%s' "$SERVICE" | tr '[:lower:]-' '[:upper:]_')"
+            fi
             if grep -q "^${KEY}=" .env; then
               sed -i "s/^${KEY}=.*/${KEY}=${VERSION}/" .env
             else
