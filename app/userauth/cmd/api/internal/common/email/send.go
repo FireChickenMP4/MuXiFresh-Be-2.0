@@ -1,15 +1,18 @@
 package email
 
 import (
+	"crypto/tls"
+	"fmt"
+	"net/smtp"
+	"net/textproto"
+
 	code "MuXiFresh-Be-2.0/app/userauth/cmd/api/internal/common/code"
 	"MuXiFresh-Be-2.0/app/userauth/cmd/api/internal/config"
 	"MuXiFresh-Be-2.0/common/convert"
 	"MuXiFresh-Be-2.0/common/globalKey"
 	"MuXiFresh-Be-2.0/common/tool"
-	"fmt"
+
 	"github.com/jordan-wright/email"
-	"net/smtp"
-	"net/textproto"
 )
 
 type EmailInfo struct {
@@ -20,6 +23,10 @@ type EmailInfo struct {
 }
 
 var eInfo EmailInfo
+
+var sendWithTLS = func(message *email.Email, address string, auth smtp.Auth, config *tls.Config) error {
+	return message.SendWithTLS(address, auth, config)
+}
 
 func Load(c config.Config) {
 	eInfo = EmailInfo{
@@ -46,7 +53,15 @@ func Send(Email string, Type string) error {
 		HTML:    []byte(html),
 		Headers: textproto.MIMEHeader{},
 	}
-	err := e.Send(eInfo.Host+":"+eInfo.Port, smtp.PlainAuth("", eInfo.UserName, eInfo.Password, eInfo.Host))
+	err := sendWithTLS(
+		e,
+		eInfo.Host+":"+eInfo.Port,
+		smtp.PlainAuth("", eInfo.UserName, eInfo.Password, eInfo.Host),
+		&tls.Config{
+			ServerName: eInfo.Host,
+			MinVersion: tls.VersionTLS12,
+		},
+	)
 	if err != nil {
 		return err
 	}
