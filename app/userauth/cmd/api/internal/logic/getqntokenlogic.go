@@ -2,6 +2,7 @@ package logic
 
 import (
 	"MuXiFresh-Be-2.0/app/userauth/cmd/api/internal/common/tube"
+	"MuXiFresh-Be-2.0/common/ctxData"
 	"context"
 
 	"MuXiFresh-Be-2.0/app/userauth/cmd/api/internal/svc"
@@ -25,7 +26,7 @@ func NewGetQNTokenLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetQNT
 }
 
 func (l *GetQNTokenLogic) GetQNToken(req *types.GetQNTokenReq) (resp *types.GetQNTokenResp, err error) {
-	qnToken := tube.GetQNToken()
+	qnToken := tube.GetQNToken(ctxData.GetUserIdFromCtx(l.ctx))
 	return &types.GetQNTokenResp{
 		QNToken: qnToken,
 	}, nil
