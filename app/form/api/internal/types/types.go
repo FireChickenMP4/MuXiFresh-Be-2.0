@@ -18,7 +18,7 @@ type CreateReq struct {
 	Grade         string `json:"grade"`
 	Gender        string `json:"gender"`
 	Phone         string `json:"phone"`
-	Group         string `json:"group,options=[Product,Design,Frontend,Backend,Android]"`
+	Group         string `json:"group,options=[Product,Design,Frontend,Backend,Android,Operation]"`
 	Reason        string `json:"reason"`
 	Knowledge     string `json:"knowledge"`
 	SelfIntro     string `json:"self_intro"`
