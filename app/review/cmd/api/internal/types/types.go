@@ -21,10 +21,13 @@ type GetReviewReq struct {
 	Grade         string `json:"grade,optional"`
 	School        string `json:"school,optional"`
 	Status        string `json:"status,optional"`
+	Page          int64  `json:"page,optional,default=1"`
+	PageSize      int64  `json:"page_size,optional"`
 }
 
 type GetReviewResp struct {
-	Rows []Row `json:"rows"`
+	Rows  []Row `json:"rows"`
+	Total int64 `json:"total"`
 }
 
 type Row struct {

@@ -52,7 +52,26 @@ func (l *GetReviewLogic) GetReview(req *types.GetReviewReq) (resp *types.GetRevi
 		return nil, err
 	}
 
+	total := int64(len(rows))
+	// 传了 page_size 才分页；不传则全量返回，兼容旧前端
+	if req.PageSize > 0 {
+		page := req.Page
+		if page <= 0 {
+			page = 1
+		}
+		start := (page - 1) * req.PageSize
+		if start < 0 || start > total {
+			start = total
+		}
+		end := start + req.PageSize
+		if end < start || end > total {
+			end = total
+		}
+		rows = rows[start:end]
+	}
+
 	return &types.GetReviewResp{
-		Rows: rows,
+		Rows:  rows,
+		Total: total,
 	}, nil
 }
