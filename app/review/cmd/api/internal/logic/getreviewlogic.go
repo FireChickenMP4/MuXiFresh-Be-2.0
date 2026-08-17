@@ -47,45 +47,11 @@ func (l *GetReviewLogic) GetReview(req *types.GetReviewReq) (resp *types.GetRevi
 		endTime = time.Date(req.Year, time.June, 31, 23, 59, 59, 999999999, time.UTC)
 	}
 
-	entryForms, err := l.svcCtx.EntryFormModel.FindByGroup(l.ctx, req.Group, req.School, req.Grade, startTime, endTime)
-
+	rows, err := buildReviewRows(l.ctx, l.svcCtx, req.Group, req.School, req.Grade, req.Status, startTime, endTime)
 	if err != nil {
 		return nil, err
 	}
-	var rows []types.Row
-	for _, entryForm := range entryForms {
 
-		userId := entryForm.UserId.String()[10:34]
-		//录取进度
-		schedule, err := l.svcCtx.ScheduleClient.FindOneByUserId(l.ctx, userId)
-		if err != nil {
-			return nil, err
-		}
-
-		if req.Status != "" && schedule.AdmissionStatus != req.Status {
-			continue
-		}
-		//测验情况
-		userInfo, err := l.svcCtx.UserInfoModel.FindOne(l.ctx, userId)
-		if err != nil {
-			return nil, err
-		}
-
-		examStatus := "已提交"
-
-		rows = append(rows, types.Row{
-			Name:            userInfo.Name,
-			Grade:           entryForm.Grade,
-			School:          userInfo.School,
-			Group:           entryForm.Group,
-			Gender:          entryForm.Gender,
-			FormID:          entryForm.ID.String()[10:34],
-			ExamStuatus:     examStatus,
-			UserId:          userId,
-			AdmissionStatus: schedule.AdmissionStatus,
-			ScheduleID:      schedule.ID.String()[10:34],
-		})
-	}
 	return &types.GetReviewResp{
 		Rows: rows,
 	}, nil

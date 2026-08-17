@@ -18,6 +18,7 @@ type (
 	ScheduleModel interface {
 		scheduleModel
 		FindOneByUserId(ctx context.Context, userId string) (*Schedule, error)
+		FindByUserIds(ctx context.Context, userIds []string) ([]*Schedule, error)
 		UpdateByUserId(ctx context.Context, data *Schedule) (*mongo.UpdateResult, error)
 		InsertGetID(ctx context.Context, data *Schedule) (string, error)
 	}
@@ -47,6 +48,28 @@ func (m *customScheduleModel) FindOneByUserId(ctx context.Context, userId string
 	switch err {
 	case nil:
 		return &data, nil
+	case mon.ErrNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
+func (m *customScheduleModel) FindByUserIds(ctx context.Context, userIds []string) ([]*Schedule, error) {
+	oids := make([]primitive.ObjectID, 0, len(userIds))
+	for _, id := range userIds {
+		oid, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			return nil, ErrInvalidObjectId
+		}
+		oids = append(oids, oid)
+	}
+
+	var schedules []*Schedule
+	err := m.conn.Find(ctx, &schedules, bson.M{"user_id": bson.M{"$in": oids}})
+	switch err {
+	case nil:
+		return schedules, nil
 	case mon.ErrNotFound:
 		return nil, ErrNotFound
 	default:
