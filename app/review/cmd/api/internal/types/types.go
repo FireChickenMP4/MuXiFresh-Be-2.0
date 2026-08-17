@@ -7,7 +7,7 @@ type ExportReviewExcelReq struct {
 	Authorization string `header:"Authorization"`
 	Year          int    `json:"year"`
 	Season        string `json:"season,options=[autumn,spring]"`
-	Group         string `json:"group,optional"` // 如果为空，导出所有组
+	Group         string `json:"group,optional,options=[Product,Design,Frontend,Backend,Android,Operation]"` // 如果为空，导出所有组
 	Grade         string `json:"grade,optional"`
 	School        string `json:"school,optional"`
 	Status        string `json:"status,optional"`
@@ -16,7 +16,7 @@ type ExportReviewExcelReq struct {
 type GetReviewReq struct {
 	Authorization string `header:"Authorization"`
 	Year          int    `json:"year"`
-	Group         string `json:"group"`
+	Group         string `json:"group,options=[Product,Design,Frontend,Backend,Android,Operation]"`
 	Season        string `json:"season,options=[autumn,spring]"`
 	Grade         string `json:"grade,optional"`
 	School        string `json:"school,optional"`
