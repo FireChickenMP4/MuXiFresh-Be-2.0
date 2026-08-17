@@ -47,46 +47,31 @@ func (l *GetReviewLogic) GetReview(req *types.GetReviewReq) (resp *types.GetRevi
 		endTime = time.Date(req.Year, time.June, 31, 23, 59, 59, 999999999, time.UTC)
 	}
 
-	entryForms, err := l.svcCtx.EntryFormModel.FindByGroup(l.ctx, req.Group, req.School, req.Grade, startTime, endTime)
-
+	rows, err := buildReviewRows(l.ctx, l.svcCtx, req.Group, req.School, req.Grade, req.Status, startTime, endTime)
 	if err != nil {
 		return nil, err
 	}
-	var rows []types.Row
-	for _, entryForm := range entryForms {
 
-		userId := entryForm.UserId.String()[10:34]
-		//录取进度
-		schedule, err := l.svcCtx.ScheduleClient.FindOneByUserId(l.ctx, userId)
-		if err != nil {
-			return nil, err
+	total := int64(len(rows))
+	// 传了 page_size 才分页；不传则全量返回，兼容旧前端
+	if req.PageSize > 0 {
+		page := req.Page
+		if page <= 0 {
+			page = 1
 		}
-
-		if req.Status != "" && schedule.AdmissionStatus != req.Status {
-			continue
+		start := (page - 1) * req.PageSize
+		if start < 0 || start > total {
+			start = total
 		}
-		//测验情况
-		userInfo, err := l.svcCtx.UserInfoModel.FindOne(l.ctx, userId)
-		if err != nil {
-			return nil, err
+		end := start + req.PageSize
+		if end < start || end > total {
+			end = total
 		}
-
-		examStatus := "已提交"
-
-		rows = append(rows, types.Row{
-			Name:            userInfo.Name,
-			Grade:           entryForm.Grade,
-			School:          userInfo.School,
-			Group:           entryForm.Group,
-			Gender:          entryForm.Gender,
-			FormID:          entryForm.ID.String()[10:34],
-			ExamStuatus:     examStatus,
-			UserId:          userId,
-			AdmissionStatus: schedule.AdmissionStatus,
-			ScheduleID:      schedule.ID.String()[10:34],
-		})
+		rows = rows[start:end]
 	}
+
 	return &types.GetReviewResp{
-		Rows: rows,
+		Rows:  rows,
+		Total: total,
 	}, nil
 }

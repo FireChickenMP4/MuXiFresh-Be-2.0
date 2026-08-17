@@ -7,7 +7,7 @@ type ExportReviewExcelReq struct {
 	Authorization string `header:"Authorization"`
 	Year          int    `json:"year"`
 	Season        string `json:"season,options=[autumn,spring]"`
-	Group         string `json:"group,optional"` // 如果为空，导出所有组
+	Group         string `json:"group,optional,options=[Product,Design,Frontend,Backend,Android,Operation]"` // 如果为空，导出所有组
 	Grade         string `json:"grade,optional"`
 	School        string `json:"school,optional"`
 	Status        string `json:"status,optional"`
@@ -16,15 +16,18 @@ type ExportReviewExcelReq struct {
 type GetReviewReq struct {
 	Authorization string `header:"Authorization"`
 	Year          int    `json:"year"`
-	Group         string `json:"group"`
+	Group         string `json:"group,options=[Product,Design,Frontend,Backend,Android,Operation]"`
 	Season        string `json:"season,options=[autumn,spring]"`
 	Grade         string `json:"grade,optional"`
 	School        string `json:"school,optional"`
 	Status        string `json:"status,optional"`
+	Page          int64  `json:"page,optional,default=1"`
+	PageSize      int64  `json:"page_size,optional"`
 }
 
 type GetReviewResp struct {
-	Rows []Row `json:"rows"`
+	Rows  []Row `json:"rows"`
+	Total int64 `json:"total"`
 }
 
 type Row struct {
@@ -33,14 +36,16 @@ type Row struct {
 	School          string `json:"school"`
 	Group           string `json:"group"`
 	Gender          string `json:"gender"`
+	Major           string `json:"major"`
+	Phone           string `json:"phone"`
 	FormID          string `json:"form_id"`
-	ExamStuatus     string `json:"exam_status"`
 	UserId          string `json:"user_id"`
 	AdmissionStatus string `json:"admission_status"`
 	ScheduleID      string `json:"schedule_id"`
 	Understanding   string `json:"understanding"`
 	Reason          string `json:"reason"`
 	SelfIntro       string `json:"selfintro"`
+	ExtraQuestion   string `json:"extra_question"`
 }
 
 type SetAdmissionStatusReq struct {

@@ -69,7 +69,7 @@ type GetAssignmentInfoResp struct {
 
 type GetAssignmentListReq struct {
 	Authorization string `header:"Authorization"`
-	Group         string `form:"group,options=[Product,Design,Frontend,Backend,Android]"`
+	Group         string `form:"group,options=[Product,Design,Frontend,Backend,Android,Operation]"`
 }
 
 type GetAssignmentListResp struct {
@@ -78,7 +78,7 @@ type GetAssignmentListResp struct {
 
 type GetAssignmentListSelectedReq struct {
 	Authorization string `header:"Authorization"`
-	Group         string `form:"group,options=[Product,Design,Frontend,Backend,Android]"`
+	Group         string `form:"group,options=[Product,Design,Frontend,Backend,Android,Operation]"`
 	Year          int    `form:"year"`
 	Semester      string `form:"semester,options=[autumn,spring]"`
 }
@@ -129,7 +129,7 @@ type ReplySubmissionCommentResp struct {
 type SetAssignmentReq struct {
 	Authorization string   `header:"Authorization"`
 	AssignmentID  string   `json:"assignedTaskID,optional"`
-	Group         string   `form:"group,options=[Product,Design,Frontend,Backend,Android]"`
+	Group         string   `form:"group,options=[Product,Design,Frontend,Backend,Android,Operation]"`
 	TitleText     string   `json:"title_text"`
 	Content       string   `json:"content"`
 	Urls          []string `json:"urls"`

@@ -27,7 +27,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: SetAdmissionStatusHandler(serverCtx),
 			},
 			{
-				// 一键导出 Excel（包含每个组的名单）
+				// 一键导出 Excel（包含每个组的名单）。返回 xlsx 二进制流（application/vnd.openxmlformats-officedocument.spreadsheetml.sheet），文件名在 Content-Disposition 响应头
 				Method:  http.MethodPost,
 				Path:    "/review/export",
 				Handler: ExportReviewExcelHandler(serverCtx),

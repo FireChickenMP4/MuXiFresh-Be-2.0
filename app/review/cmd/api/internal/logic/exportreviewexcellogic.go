@@ -4,6 +4,7 @@ import (
 	"MuXiFresh-Be-2.0/app/review/cmd/api/internal/svc"
 	"MuXiFresh-Be-2.0/app/review/cmd/api/internal/types"
 	"MuXiFresh-Be-2.0/app/user/cmd/rpc/user/userclient"
+	"MuXiFresh-Be-2.0/common/convert"
 	"MuXiFresh-Be-2.0/common/ctxData"
 	"MuXiFresh-Be-2.0/common/globalKey"
 	"bytes"
@@ -56,72 +57,70 @@ func (l *ExportReviewExcelLogic) ExportReviewExcel(req *types.ExportReviewExcelR
 		startTime = time.Date(req.Year, time.January, 1, 0, 0, 0, 0, time.UTC)
 		endTime = time.Date(req.Year, time.December, 31, 23, 59, 59, 999999999, time.UTC)
 	}
-	entryForms, err := l.svcCtx.EntryFormModel.FindByGroup(l.ctx, req.Group, req.School, req.Grade, startTime, endTime)
+	rows, err := buildReviewRows(l.ctx, l.svcCtx, req.Group, req.School, req.Grade, req.Status, startTime, endTime)
 	if err != nil {
 		return nil, "", err
 	}
-	var rows []types.Row
-	for _, entryForm := range entryForms {
-
-		userId := entryForm.UserId.String()[10:34]
-		//录取进度
-		schedule, err := l.svcCtx.ScheduleClient.FindOneByUserId(l.ctx, userId)
-		if err != nil {
-			return nil, "", err
-		}
-
-		if req.Status != "" && schedule.AdmissionStatus != req.Status {
-			continue
-		}
-		//测验情况
-		userInfo, err := l.svcCtx.UserInfoModel.FindOne(l.ctx, userId)
-		if err != nil {
-			return nil, "", err
-		}
-
-		examStatus := "已提交"
-
-		rows = append(rows, types.Row{
-			Name:            userInfo.Name,
-			Grade:           entryForm.Grade,
-			School:          userInfo.School,
-			Group:           entryForm.Group,
-			Gender:          entryForm.Gender,
-			FormID:          entryForm.ID.String()[10:34],
-			ExamStuatus:     examStatus,
-			UserId:          userId,
-			AdmissionStatus: schedule.AdmissionStatus,
-			ScheduleID:      schedule.ID.String()[10:34],
-			Understanding:   entryForm.Knowledge,
-			Reason:          entryForm.Reason,
-			SelfIntro:       entryForm.SelfIntro,
-		})
-	}
 	// --- 生成 Excel ---
 	f := excelize.NewFile()
-	sheet := "AllGroups"
-	f.SetSheetName("Sheet1", sheet)
 
-	headers := []string{"Name", "Grade", "School", "Group", "Gender", "FormID", "ExamStatus", "UserId", "AdmissionStatus", "ScheduleID", "Understanding", "Reason", "SelfIntro"}
-	for i, h := range headers {
-		col := string(rune('A' + i))
-		f.SetCellValue(sheet, col+"1", h)
+	groupNames := []struct{ en, cn string }{
+		{"Product", "产品组"},
+		{"Design", "设计组"},
+		{"Frontend", "前端组"},
+		{"Backend", "后端组"},
+		{"Android", "安卓组"},
+		{"Operation", "运营组"},
 	}
 
-	for rowIdx, r := range rows {
-		f.SetCellValue(sheet, "A"+strconv.Itoa(rowIdx+2), r.Name)
-		f.SetCellValue(sheet, "B"+strconv.Itoa(rowIdx+2), r.Grade)
-		f.SetCellValue(sheet, "C"+strconv.Itoa(rowIdx+2), r.School)
-		f.SetCellValue(sheet, "D"+strconv.Itoa(rowIdx+2), r.Group)
-		f.SetCellValue(sheet, "E"+strconv.Itoa(rowIdx+2), r.Gender)
-		f.SetCellValue(sheet, "F"+strconv.Itoa(rowIdx+2), r.FormID)
-		f.SetCellValue(sheet, "G"+strconv.Itoa(rowIdx+2), r.ExamStuatus)
-		f.SetCellValue(sheet, "H"+strconv.Itoa(rowIdx+2), r.UserId)
-		f.SetCellValue(sheet, "I"+strconv.Itoa(rowIdx+2), r.AdmissionStatus)
-		f.SetCellValue(sheet, "J"+strconv.Itoa(rowIdx+2), r.ScheduleID)
-		f.SetCellValue(sheet, "K"+strconv.Itoa(rowIdx+2), r.Understanding)
-		f.SetCellValue(sheet, "L"+strconv.Itoa(rowIdx+2), r.Reason)
-		f.SetCellValue(sheet, "M"+strconv.Itoa(rowIdx+2), r.SelfIntro)
+	// 按组拆 sheet：req.Group 为空导出所有组（空组也建表头），否则仅该组
+	targets := groupNames
+	if req.Group != "" {
+		targets = nil
+		for _, g := range groupNames {
+			if g.en == req.Group {
+				targets = []struct{ en, cn string }{g}
+				break
+			}
+		}
+		if targets == nil {
+			targets = groupNames
+		}
+	}
+
+	byGroup := make(map[string][]types.Row)
+	for _, r := range rows {
+		byGroup[r.Group] = append(byGroup[r.Group], r)
+	}
+
+	headers := []string{"姓名", "年级", "学校", "组别", "性别", "专业", "电话", "报名表ID", "录取状态", "知识储备", "报名理由", "自我简介", "附加问题"}
+
+	for idx, g := range targets {
+		sheet := g.cn
+		if idx == 0 {
+			f.SetSheetName("Sheet1", sheet)
+		} else {
+			f.NewSheet(sheet)
+		}
+		for i, h := range headers {
+			f.SetCellValue(sheet, string(rune('A'+i))+"1", h)
+		}
+		for rowIdx, r := range byGroup[g.en] {
+			row := strconv.Itoa(rowIdx + 2)
+			f.SetCellValue(sheet, "A"+row, r.Name)
+			f.SetCellValue(sheet, "B"+row, r.Grade)
+			f.SetCellValue(sheet, "C"+row, r.School)
+			f.SetCellValue(sheet, "D"+row, convert.GroupCvtChinese(r.Group))
+			f.SetCellValue(sheet, "E"+row, r.Gender)
+			f.SetCellValue(sheet, "F"+row, r.Major)
+			f.SetCellValue(sheet, "G"+row, r.Phone)
+			f.SetCellValue(sheet, "H"+row, r.FormID)
+			f.SetCellValue(sheet, "I"+row, r.AdmissionStatus)
+			f.SetCellValue(sheet, "J"+row, r.Understanding)
+			f.SetCellValue(sheet, "K"+row, r.Reason)
+			f.SetCellValue(sheet, "L"+row, r.SelfIntro)
+			f.SetCellValue(sheet, "M"+row, r.ExtraQuestion)
+		}
 	}
 
 	buf, err := f.WriteToBuffer()

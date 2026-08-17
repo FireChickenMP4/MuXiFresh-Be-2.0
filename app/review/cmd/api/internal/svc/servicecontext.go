@@ -6,6 +6,7 @@ import (
 	externalModel3 "MuXiFresh-Be-2.0/app/schedule/model"
 	"MuXiFresh-Be-2.0/app/user/cmd/rpc/user/userclient"
 	externalModel1 "MuXiFresh-Be-2.0/app/userauth/model"
+	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/zrpc"
 )
 
@@ -18,6 +19,10 @@ type ServiceContext struct {
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
+	if err := EnsureReviewIndexes(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB); err != nil {
+		logx.Errorf("EnsureReviewIndexes failed: %v", err)
+	}
+
 	return &ServiceContext{
 		Config:         c,
 		EntryFormModel: externalModel2.NewEntryFormModel(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB, "entry_form"),

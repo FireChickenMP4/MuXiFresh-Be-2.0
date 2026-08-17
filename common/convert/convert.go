@@ -14,6 +14,8 @@ func GroupCvtChinese(group string) string {
 		group = "安卓组"
 	case "Frontend":
 		group = "前端组"
+	case "Operation":
+		group = "运营组"
 	}
 	return group
 }

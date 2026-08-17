@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/zeromicro/go-zero/core/stores/mon"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
@@ -17,6 +18,7 @@ type (
 	UserInfoModel interface {
 		userInfoModel
 		FindByStudentID(ctx context.Context, studentID string) (*UserInfo, error)
+		FindByUserIds(ctx context.Context, userIds []string) ([]*UserInfo, error)
 		UpdateByEmail(ctx context.Context, data *UserInfo) (*mongo.UpdateResult, error)
 		FindByUserType(ctx context.Context, userType string) ([]*UserInfo, error)
 	}
@@ -41,6 +43,28 @@ func (m *defaultUserInfoModel) FindByStudentID(ctx context.Context, studentID st
 	switch err {
 	case nil:
 		return &data, nil
+	case mon.ErrNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
+func (m *customUserInfoModel) FindByUserIds(ctx context.Context, userIds []string) ([]*UserInfo, error) {
+	oids := make([]primitive.ObjectID, 0, len(userIds))
+	for _, id := range userIds {
+		oid, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			return nil, ErrInvalidObjectId
+		}
+		oids = append(oids, oid)
+	}
+
+	var userInfos []*UserInfo
+	err := m.conn.Find(ctx, &userInfos, bson.M{"_id": bson.M{"$in": oids}})
+	switch err {
+	case nil:
+		return userInfos, nil
 	case mon.ErrNotFound:
 		return nil, ErrNotFound
 	default:
