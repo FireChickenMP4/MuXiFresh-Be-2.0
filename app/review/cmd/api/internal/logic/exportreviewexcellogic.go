@@ -65,7 +65,7 @@ func (l *ExportReviewExcelLogic) ExportReviewExcel(req *types.ExportReviewExcelR
 	sheet := "AllGroups"
 	f.SetSheetName("Sheet1", sheet)
 
-	headers := []string{"Name", "Grade", "School", "Group", "Gender", "FormID", "ExamStatus", "UserId", "AdmissionStatus", "ScheduleID", "Understanding", "Reason", "SelfIntro"}
+	headers := []string{"Name", "Grade", "School", "Group", "Gender", "FormID", "UserId", "AdmissionStatus", "ScheduleID", "Understanding", "Reason", "SelfIntro"}
 	for i, h := range headers {
 		col := string(rune('A' + i))
 		f.SetCellValue(sheet, col+"1", h)
@@ -78,13 +78,12 @@ func (l *ExportReviewExcelLogic) ExportReviewExcel(req *types.ExportReviewExcelR
 		f.SetCellValue(sheet, "D"+strconv.Itoa(rowIdx+2), r.Group)
 		f.SetCellValue(sheet, "E"+strconv.Itoa(rowIdx+2), r.Gender)
 		f.SetCellValue(sheet, "F"+strconv.Itoa(rowIdx+2), r.FormID)
-		f.SetCellValue(sheet, "G"+strconv.Itoa(rowIdx+2), r.ExamStuatus)
-		f.SetCellValue(sheet, "H"+strconv.Itoa(rowIdx+2), r.UserId)
-		f.SetCellValue(sheet, "I"+strconv.Itoa(rowIdx+2), r.AdmissionStatus)
-		f.SetCellValue(sheet, "J"+strconv.Itoa(rowIdx+2), r.ScheduleID)
-		f.SetCellValue(sheet, "K"+strconv.Itoa(rowIdx+2), r.Understanding)
-		f.SetCellValue(sheet, "L"+strconv.Itoa(rowIdx+2), r.Reason)
-		f.SetCellValue(sheet, "M"+strconv.Itoa(rowIdx+2), r.SelfIntro)
+		f.SetCellValue(sheet, "G"+strconv.Itoa(rowIdx+2), r.UserId)
+		f.SetCellValue(sheet, "H"+strconv.Itoa(rowIdx+2), r.AdmissionStatus)
+		f.SetCellValue(sheet, "I"+strconv.Itoa(rowIdx+2), r.ScheduleID)
+		f.SetCellValue(sheet, "J"+strconv.Itoa(rowIdx+2), r.Understanding)
+		f.SetCellValue(sheet, "K"+strconv.Itoa(rowIdx+2), r.Reason)
+		f.SetCellValue(sheet, "L"+strconv.Itoa(rowIdx+2), r.SelfIntro)
 	}
 
 	buf, err := f.WriteToBuffer()

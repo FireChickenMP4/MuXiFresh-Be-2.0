@@ -71,14 +71,16 @@ func buildReviewRows(ctx context.Context, svcCtx *svc.ServiceContext, group, sch
 			School:          userInfo.School,
 			Group:           entryForm.Group,
 			Gender:          entryForm.Gender,
+			Major:           entryForm.Major,
+			Phone:           entryForm.Phone,
 			FormID:          entryForm.ID.Hex(),
-			ExamStuatus:     "已提交",
 			UserId:          userId,
 			AdmissionStatus: schedule.AdmissionStatus,
 			ScheduleID:      schedule.ID.Hex(),
 			Understanding:   entryForm.Knowledge,
 			Reason:          entryForm.Reason,
 			SelfIntro:       entryForm.SelfIntro,
+			ExtraQuestion:   entryForm.ExtraQuestion,
 		})
 	}
 

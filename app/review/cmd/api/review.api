@@ -26,14 +26,16 @@ type Row {
 	School          string `json:"school"`
 	Group           string `json:"group"`
 	Gender          string `json:"gender"`
+	Major           string `json:"major"`
+	Phone           string `json:"phone"`
 	FormID          string `json:"form_id"`
-	ExamStuatus     string `json:"exam_status"`
 	UserId          string `json:"user_id"`
 	AdmissionStatus string `json:"admission_status"`
 	ScheduleID      string `json:"schedule_id"`
 	Understanding   string `json:"understanding"`
 	Reason          string `json:"reason"`
 	SelfIntro       string `json:"selfintro"`
+	ExtraQuestion   string `json:"extra_question"`
 }
 
 type GetReviewResp {
