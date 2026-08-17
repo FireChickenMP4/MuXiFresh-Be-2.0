@@ -215,6 +215,7 @@ jobs:
         with:
           context: ./app/${{ matrix.service }}
           file: ./app/${{ matrix.service }}/Dockerfile
+          provenance: false
           push: true
           tags: ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_NAMESPACE }}/muxifresh-${{ matrix.service }}:${{ needs.changes.outputs.version }}
 
