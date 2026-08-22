@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type (
 		FindOneByUserId(ctx context.Context, userId string) (*Schedule, error)
 		FindByUserIds(ctx context.Context, userIds []string) ([]*Schedule, error)
 		UpdateByUserId(ctx context.Context, data *Schedule) (*mongo.UpdateResult, error)
+		UpsertByUserId(ctx context.Context, data *Schedule) (*mongo.UpdateResult, error)
 		InsertGetID(ctx context.Context, data *Schedule) (string, error)
 	}
 
@@ -81,6 +83,28 @@ func (m *defaultScheduleModel) UpdateByUserId(ctx context.Context, data *Schedul
 	data.UpdateAt = time.Now()
 
 	res, err := m.conn.UpdateOne(ctx, bson.M{"user_id": data.UserID}, bson.M{"$set": data})
+	return res, err
+}
+
+// UpsertByUserId 原子地按 user_id 插入或更新 schedule，
+// 配合 user_id 唯一索引可避免并发下的双写（需在 MongoDB 建 unique 索引）。
+// 更新只刷新状态与 updateAt，createAt/user_id 仅插入时写入（$setOnInsert）。
+func (m *defaultScheduleModel) UpsertByUserId(ctx context.Context, data *Schedule) (*mongo.UpdateResult, error) {
+	now := time.Now()
+
+	res, err := m.conn.UpdateOne(ctx, bson.M{"user_id": data.UserID},
+		bson.M{
+			"$set": bson.M{
+				"entry_form_status": data.EntryFormStatus,
+				"admission_status":  data.AdmissionStatus,
+				"updateAt":          now,
+			},
+			"$setOnInsert": bson.M{
+				"user_id":  data.UserID,
+				"createAt": now,
+			},
+		},
+		options.Update().SetUpsert(true))
 	return res, err
 }
 

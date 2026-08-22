@@ -7,6 +7,7 @@ import (
 	"MuXiFresh-Be-2.0/common/ctxData"
 	"context"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 
 	"MuXiFresh-Be-2.0/app/form/api/internal/svc"
@@ -56,35 +57,23 @@ func (l *CreateFormLogic) CreateForm(req *types.CreateReq) (resp *types.CreateRe
 		return nil, err
 	}
 
-	// 创建或更新 schedule：确保用户存在 schedule 文档，
-	// 否则 UpdateByUserId 对不存在的文档静默无效，导致进度/my-info 缺失关联。
-	var scheduleID string
-	existingSchedule, sErr := l.svcCtx.ScheduleModel.FindOneByUserId(l.ctx, userId)
-	switch sErr {
-	case nil:
-		scheduleID = existingSchedule.ID.String()[10:34]
-		_, err = l.svcCtx.ScheduleModel.UpdateByUserId(l.ctx, &schedulemodel.Schedule{
-			UserID:          u,
-			EntryFormStatus: "已提交",
-			AdmissionStatus: "已报名",
-		})
-	case schedulemodel.ErrNotFound:
-		scheduleID, err = l.svcCtx.ScheduleModel.InsertGetID(l.ctx, &schedulemodel.Schedule{
-			UserID:          u,
-			EntryFormStatus: "已提交",
-			AdmissionStatus: "已报名",
-		})
-	default:
-		return nil, sErr
-	}
-	if err != nil {
+	// 原子 upsert schedule：不存在则创建、存在则更新（配合 user_id 唯一索引防并发双写）。
+	// 唯一索引冲突（并发双击）时 DuplicateKey 视为已创建，继续走后续关联。
+	_, err = l.svcCtx.ScheduleModel.UpsertByUserId(l.ctx, &schedulemodel.Schedule{
+		UserID:          u,
+		EntryFormStatus: "已提交",
+		AdmissionStatus: "已报名",
+	})
+	if err != nil && !mongo.IsDuplicateKeyError(err) {
 		return nil, err
 	}
 
-	sid, err := primitive.ObjectIDFromHex(scheduleID[10:34])
+	// upsert 后查一次拿 scheduleID，写入 userinfo 关联
+	schedule, err := l.svcCtx.ScheduleModel.FindOneByUserId(l.ctx, userId)
 	if err != nil {
 		return nil, err
 	}
+	sid := schedule.ID
 	_, err = l.svcCtx.UserInfoModelClient.Update(l.ctx, &externalModel.UserInfo{
 		ID:          u,
 		EntryFormID: f,
