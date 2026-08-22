@@ -56,18 +56,40 @@ func (l *CreateFormLogic) CreateForm(req *types.CreateReq) (resp *types.CreateRe
 		return nil, err
 	}
 
-	_, err = l.svcCtx.UserInfoModelClient.Update(l.ctx, &externalModel.UserInfo{
-		ID:          u,
-		EntryFormID: f,
-		UpdateAt:    time.Now(),
-	})
+	// 创建或更新 schedule：确保用户存在 schedule 文档，
+	// 否则 UpdateByUserId 对不存在的文档静默无效，导致进度/my-info 缺失关联。
+	var scheduleID string
+	existingSchedule, sErr := l.svcCtx.ScheduleModel.FindOneByUserId(l.ctx, userId)
+	switch sErr {
+	case nil:
+		scheduleID = existingSchedule.ID.String()[10:34]
+		_, err = l.svcCtx.ScheduleModel.UpdateByUserId(l.ctx, &schedulemodel.Schedule{
+			UserID:          u,
+			EntryFormStatus: "已提交",
+			AdmissionStatus: "已报名",
+		})
+	case schedulemodel.ErrNotFound:
+		scheduleID, err = l.svcCtx.ScheduleModel.InsertGetID(l.ctx, &schedulemodel.Schedule{
+			UserID:          u,
+			EntryFormStatus: "已提交",
+			AdmissionStatus: "已报名",
+		})
+	default:
+		return nil, sErr
+	}
 	if err != nil {
 		return nil, err
 	}
-	_, err = l.svcCtx.ScheduleModel.UpdateByUserId(l.ctx, &schedulemodel.Schedule{
-		UserID:          u,
-		EntryFormStatus: "已提交",
-		AdmissionStatus: "已报名",
+
+	sid, err := primitive.ObjectIDFromHex(scheduleID[10:34])
+	if err != nil {
+		return nil, err
+	}
+	_, err = l.svcCtx.UserInfoModelClient.Update(l.ctx, &externalModel.UserInfo{
+		ID:          u,
+		EntryFormID: f,
+		ScheduleID:  sid,
+		UpdateAt:    time.Now(),
 	})
 	if err != nil {
 		return nil, err
