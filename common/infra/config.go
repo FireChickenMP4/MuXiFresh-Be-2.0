@@ -56,6 +56,13 @@ type ObjectStorageConf struct {
 }
 
 func (c Config) ApplyEtcd(targets ...*discov.EtcdConf) {
+	// go-zero's etcd client does not automatically use the User/Pass in config;
+	// must call RegisterAccount explicitly, otherwise connecting to an
+	// authenticated etcd fails with "user name is empty".
+	if c.Etcd.User != "" && c.Etcd.Pass != "" {
+		discov.RegisterAccount(c.Etcd.Hosts, c.Etcd.User, c.Etcd.Pass)
+	}
+
 	for _, target := range targets {
 		if target == nil {
 			continue
