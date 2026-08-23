@@ -28,18 +28,21 @@ func EnsureReviewIndexes(url, db string) error {
 	// FindByGroup 组合过滤：createAt 恒必选且放最前，
 	// 保证所有调用至少能用 createAt 前缀做范围扫描；
 	// group/school/grade 为可选等值条件，在索引扫描后过滤。
-	if err := ensureIndex(ctx, client, db, "entry_form", "entry_form_createAt_group_school_grade",
+	if err := ensureIndex(ctx, client, db, "entry_form", "entry_form_createAt_group_school_grade", false,
 		bson.D{{Key: "createAt", Value: 1}, {Key: "group", Value: 1},
 			{Key: "school", Value: 1}, {Key: "grade", Value: 1}}); err != nil {
 		return err
 	}
 
-	// FindByUserIds / FindOneByUserId 的 $in 与单条查询
-	return ensureIndex(ctx, client, db, "schedule", "schedule_user_id",
+	// FindByUserIds / FindOneByUserId 的 $in 与单条查询；
+	// user_id 唯一索引用于兜底 schedule 并发双写（配合 UpsertByUserId）。
+	// 注意：若数据库已存在同名的非唯一 schedule_user_id，需先 drop 旧索引，
+	// 否则 unique 索引不会建上（indexExists 按名命中后跳过）。
+	return ensureIndex(ctx, client, db, "schedule", "schedule_user_id", true,
 		bson.D{{Key: "user_id", Value: 1}})
 }
 
-func ensureIndex(ctx context.Context, client *mongo.Client, db, collection, name string, keys bson.D) error {
+func ensureIndex(ctx context.Context, client *mongo.Client, db, collection, name string, unique bool, keys bson.D) error {
 	coll := client.Database(db).Collection(collection)
 
 	exists, err := indexExists(ctx, coll, name)
@@ -51,9 +54,14 @@ func ensureIndex(ctx context.Context, client *mongo.Client, db, collection, name
 		return nil
 	}
 
+	opts := options.Index().SetName(name)
+	if unique {
+		opts = opts.SetUnique(true)
+	}
+
 	_, err = coll.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    keys,
-		Options: options.Index().SetName(name),
+		Options: opts,
 	})
 	if err != nil {
 		if isIndexExists(err) {
