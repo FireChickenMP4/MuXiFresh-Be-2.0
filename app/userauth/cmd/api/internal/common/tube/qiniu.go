@@ -16,11 +16,17 @@ const (
 	// duration in seconds and converts it to an absolute deadline when signing.
 	uploadTokenExpires uint64 = 5 * 60
 
-	// This endpoint is currently used for public image assets. Use an explicit
-	// raster-image allowlist so active content such as HTML and SVG cannot be
-	// hosted on the application's trusted storage domain.
+	// Server-side captcha uploads remain image-only. Use an explicit raster-image
+	// allowlist so active content such as HTML and SVG cannot be hosted on the
+	// application's trusted storage domain.
 	allowedImageMimeTypes = "image/jpeg;image/png;image/gif;image/webp;image/bmp;image/avif;image/heic;image/heif"
-	maxImageSize          = int64(10 << 20)
+
+	// Client uploads also support passive document attachments. Keep this as an
+	// allowlist: in particular, do not allow application/zip even though DOCX is
+	// a ZIP container, because Qiniu can identify DOCX from its content and key.
+	allowedDocumentMimeTypes = "application/pdf;application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	allowedClientUploadMimes = allowedImageMimeTypes + ";" + allowedDocumentMimeTypes
+	maxUploadSize            = int64(10 << 20)
 )
 
 type Qiniu struct {
@@ -62,25 +68,25 @@ func UploadFileToQiniu(localFilePath string) (string, error) {
 }
 
 func GetQNToken(endUser string) string {
-	putPolicy := newClientImageUploadPolicy(Q.Bucket, endUser)
+	putPolicy := newClientUploadPolicy(Q.Bucket, endUser)
 	mac := qbox.NewMac(Q.AccessKey, Q.SecretKey)
 	return putPolicy.UploadToken(mac)
 }
 
-// newClientImageUploadPolicy intentionally keeps bucket-level scope for
+// newClientUploadPolicy intentionally keeps bucket-level scope for
 // compatibility with deployed clients, which currently choose their own key.
 // The policy still removes the reported arbitrary-file-upload vector by
-// enforcing content detection, a raster-image allowlist, a size limit, short
-// expiry and insert-only semantics.
-func newClientImageUploadPolicy(bucket, endUser string) storage.PutPolicy {
+// enforcing content detection, an image/PDF/DOCX allowlist, a size limit,
+// short expiry and insert-only semantics.
+func newClientUploadPolicy(bucket, endUser string) storage.PutPolicy {
 	return storage.PutPolicy{
 		Scope:      bucket,
 		Expires:    uploadTokenExpires,
 		InsertOnly: 1,
 		EndUser:    endUser,
-		FsizeLimit: maxImageSize,
+		FsizeLimit: maxUploadSize,
 		DetectMime: 1,
-		MimeLimit:  allowedImageMimeTypes,
+		MimeLimit:  allowedClientUploadMimes,
 	}
 }
 
@@ -93,7 +99,7 @@ func newServerImageUploadPolicy(bucket, key string) storage.PutPolicy {
 		InsertOnly:   1,
 		ForceSaveKey: true,
 		SaveKey:      key,
-		FsizeLimit:   maxImageSize,
+		FsizeLimit:   maxUploadSize,
 		DetectMime:   1,
 		MimeLimit:    allowedImageMimeTypes,
 	}
