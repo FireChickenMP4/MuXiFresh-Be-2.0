@@ -31,6 +31,11 @@ func (l *CheckLogic) Check(in *pb.CheckReq) (*pb.CheckResp, error) {
 	if err != nil && err != formmodel.ErrNotFound {
 		return nil, err
 	}
+	if f == nil {
+		// 未交表用户：FindOneByUserId 返回 nil, ErrNotFound，
+		// 这里兜底用空表单，避免后续 f.Major/f.Group nil 解引用导致进程崩溃。
+		f = &formmodel.EntryForm{}
+	}
 
 	s, err := l.svcCtx.ScheduleClient.FindOne(l.ctx, in.ScheduleID)
 	if err != nil {
