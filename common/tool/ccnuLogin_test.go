@@ -11,6 +11,7 @@ import (
 )
 
 func TestCCNULogin(t *testing.T) {
+	t.Skip("手动调试脚本：依赖真实 CCNU 网络与写死账号，默认跳过")
 	username := "xxx"
 	password := "xxx"
 	resp, _ := soup.Get("https://account.ccnu.edu.cn/cas/login?service=http%3A%2F%2Fone.ccnu.edu.cn%2Fcas%2Flogin_portal")
@@ -49,17 +50,19 @@ func TestParseCasLogin(t *testing.T) {
 		`</body></html>`
 
 	cases := []struct {
-		name string
-		html string
-		ok   bool
+		name   string
+		html   string
+		ok     bool
+		wantJS string
+		wantST string
 	}{
-		{"empty", "", false},
-		{"short", "<html><body></body></html>", false},
-		{"no-cas", "<html><body><div>hello</div></body></html>", false},
-		{"few-scripts", `<html><body id="cas"><script src="https://a.com/1.js"></script></body></html>`, false},
-		{"short-src", `<html><body id="cas"><script src="https://a.com/1.js"></script><script src="https://a.com/2.js"></script><script src="x"></script></body></html>`, false},
-		{"no-logo", `<html><body id="cas"><script src="https://account.ccnu.edu.cn/cas/js/a.js"></script><script src="https://account.ccnu.edu.cn/cas/js/b.js"></script><script src="https://account.ccnu.edu.cn/cas/js/c.js"></script><div>no logo</div></body></html>`, false},
-		{"valid", validHTML, true},
+		{"empty", "", false, "", ""},
+		{"short", "<html><body></body></html>", false, "", ""},
+		{"no-cas", "<html><body><div>hello</div></body></html>", false, "", ""},
+		{"few-scripts", `<html><body id="cas"><script src="https://a.com/1.js"></script></body></html>`, false, "", ""},
+		{"short-src", `<html><body id="cas"><script src="https://a.com/1.js"></script><script src="https://a.com/2.js"></script><script src="x"></script></body></html>`, false, "", ""},
+		{"no-logo", `<html><body id="cas"><script src="https://account.ccnu.edu.cn/cas/js/a.js"></script><script src="https://account.ccnu.edu.cn/cas/js/b.js"></script><script src="https://account.ccnu.edu.cn/cas/js/c.js"></script><div>no logo</div></body></html>`, false, "", ""},
+		{"valid", validHTML, true, "n/cas/js/c.js", "LT-12345"},
 	}
 
 	for _, tc := range cases {
@@ -68,8 +71,8 @@ func TestParseCasLogin(t *testing.T) {
 			if ok != tc.ok {
 				t.Fatalf("expected ok=%v, got %v (js=%q st=%q)", tc.ok, ok, js, st)
 			}
-			if tc.ok && (js == "" || st == "") {
-				t.Fatalf("expected non-empty js/st on valid html, got js=%q st=%q", js, st)
+			if tc.ok && (js != tc.wantJS || st != tc.wantST) {
+				t.Fatalf("expected js=%q st=%q, got js=%q st=%q", tc.wantJS, tc.wantST, js, st)
 			}
 		})
 	}
