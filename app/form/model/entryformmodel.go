@@ -42,7 +42,10 @@ func (m *defaultEntryFormModel) InsertReturnID(ctx context.Context, data *EntryF
 	}
 
 	id, err := m.conn.InsertOne(ctx, data)
-	return id.InsertedID, err
+	if err != nil {
+		return nil, err
+	}
+	return id.InsertedID, nil
 }
 
 func (m *customEntryFormModel) FindOneByUserId(ctx context.Context, userId string) (*EntryForm, error) {

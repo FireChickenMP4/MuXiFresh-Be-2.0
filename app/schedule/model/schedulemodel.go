@@ -116,5 +116,8 @@ func (m *defaultScheduleModel) InsertGetID(ctx context.Context, data *Schedule) 
 	}
 
 	result, err := m.conn.InsertOne(ctx, data)
-	return fmt.Sprint(result.InsertedID), err
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprint(result.InsertedID), nil
 }

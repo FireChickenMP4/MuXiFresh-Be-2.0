@@ -52,6 +52,9 @@ func (l *UpdateFormLogic) UpdateForm(in *pb.CreateReq) (*pb.CreateResp, error) {
 		ExtraQuestion: in.ExtraQuestion,
 		UpdateAt:      time.Now(),
 	})
+	if err != nil {
+		return nil, err
+	}
 	return &pb.CreateResp{
 		FormID: fmt.Sprint(updateRet.UpsertedID),
 	}, nil
