@@ -55,6 +55,9 @@ func (l *UpdateFormLogic) UpdateForm(in *pb.CreateReq) (*pb.CreateResp, error) {
 	if err != nil {
 		return nil, err
 	}
+	if updateRet.MatchedCount == 0 {
+		return nil, model.ErrNotFound
+	}
 	return &pb.CreateResp{
 		FormID: fmt.Sprint(updateRet.UpsertedID),
 	}, nil
