@@ -36,6 +36,14 @@ func (l *GetSubmissionCommentLogic) GetSubmissionComment(req *types.GetSubmissio
 	if err != nil {
 		return nil, err
 	}
+	return &types.GetSubmissionCommentResp{
+		Comments: buildCommentTree(comments),
+	}, nil
+}
+
+// buildCommentTree 将评论按 FatherID 挂到根评论下（根评论 FatherID 为 24 个 0）。
+// 父评论缺失的回复不挂载，避免 tree 越界 panic。
+func buildCommentTree(comments []types.Comment) []types.Comment {
 	commentMap := make(map[string]int)
 	var index = 0
 	var tree []types.Comment
@@ -53,7 +61,5 @@ func (l *GetSubmissionCommentLogic) GetSubmissionComment(req *types.GetSubmissio
 			}
 		}
 	}
-	return &types.GetSubmissionCommentResp{
-		Comments: tree,
-	}, nil
+	return tree
 }

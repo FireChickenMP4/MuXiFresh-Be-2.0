@@ -39,3 +39,38 @@ func TestCCNULogin(t *testing.T) {
 	res, _ := client.Do(req)
 	fmt.Println(len(res.Cookies()))
 }
+
+func TestParseCasLogin(t *testing.T) {
+	validHTML := `<html><body id="cas">` +
+		`<script src="https://account.ccnu.edu.cn/cas/js/a.js"></script>` +
+		`<script src="https://account.ccnu.edu.cn/cas/js/b.js"></script>` +
+		`<script src="https://account.ccnu.edu.cn/cas/js/c.js"></script>` +
+		`<div class="logo"><input/><input/><input value="LT-12345"/></div>` +
+		`</body></html>`
+
+	cases := []struct {
+		name string
+		html string
+		ok   bool
+	}{
+		{"empty", "", false},
+		{"short", "<html><body></body></html>", false},
+		{"no-cas", "<html><body><div>hello</div></body></html>", false},
+		{"few-scripts", `<html><body id="cas"><script src="https://a.com/1.js"></script></body></html>`, false},
+		{"short-src", `<html><body id="cas"><script src="https://a.com/1.js"></script><script src="https://a.com/2.js"></script><script src="x"></script></body></html>`, false},
+		{"no-logo", `<html><body id="cas"><script src="https://account.ccnu.edu.cn/cas/js/a.js"></script><script src="https://account.ccnu.edu.cn/cas/js/b.js"></script><script src="https://account.ccnu.edu.cn/cas/js/c.js"></script><div>no logo</div></body></html>`, false},
+		{"valid", validHTML, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			js, st, ok := parseCasLogin(tc.html)
+			if ok != tc.ok {
+				t.Fatalf("expected ok=%v, got %v (js=%q st=%q)", tc.ok, ok, js, st)
+			}
+			if tc.ok && (js == "" || st == "") {
+				t.Fatalf("expected non-empty js/st on valid html, got js=%q st=%q", js, st)
+			}
+		})
+	}
+}

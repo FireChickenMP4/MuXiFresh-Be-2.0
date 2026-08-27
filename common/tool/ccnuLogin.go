@@ -14,30 +14,10 @@ func CCNULogin(studentID string, password string) bool {
 	if err != nil {
 		return false
 	}
-	doc := soup.HTMLParse(htmlBody)
-	casBody := doc.Find("body", "id", "cas")
-	if casBody.Pointer == nil {
+	js, st, ok := parseCasLogin(htmlBody)
+	if !ok {
 		return false
 	}
-	links1 := casBody.FindAll("script")
-	if len(links1) < 3 {
-		return false
-	}
-	src := links1[2].Attrs()["src"]
-	if len(src) < 27 {
-		return false
-	}
-	js := src[26:]
-	logo := doc.Find("div", "class", "logo")
-	if logo.Pointer == nil {
-		return false
-	}
-	links2 := logo.FindAll("input")
-	if len(links2) < 3 {
-		return false
-	}
-
-	st := links2[2].Attrs()["value"]
 	jar, _ := cookiejar.New(&cookiejar.Options{})
 
 	client := &http.Client{
@@ -60,4 +40,33 @@ func CCNULogin(studentID string, password string) bool {
 	}
 
 	return len(resp.Cookies()) != 0
+}
+
+// parseCasLogin 从 CCNU CAS 登录页解析 jsessionid（js）与 lt 参数（st）。
+// 页面结构不匹配或 HTML 缺失时返回 ok=false，避免对 soup 结果越界访问。
+func parseCasLogin(html string) (js, st string, ok bool) {
+	doc := soup.HTMLParse(html)
+	casBody := doc.Find("body", "id", "cas")
+	if casBody.Pointer == nil {
+		return "", "", false
+	}
+	links1 := casBody.FindAll("script")
+	if len(links1) < 3 {
+		return "", "", false
+	}
+	src := links1[2].Attrs()["src"]
+	if len(src) < 27 {
+		return "", "", false
+	}
+	js = src[26:]
+	logo := doc.Find("div", "class", "logo")
+	if logo.Pointer == nil {
+		return "", "", false
+	}
+	links2 := logo.FindAll("input")
+	if len(links2) < 3 {
+		return "", "", false
+	}
+	st = links2[2].Attrs()["value"]
+	return js, st, true
 }
