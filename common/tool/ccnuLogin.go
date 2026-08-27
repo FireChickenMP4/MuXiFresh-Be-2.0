@@ -10,9 +10,16 @@ import (
 )
 
 func CCNULogin(studentID string, password string) bool {
-	htmlBody, _ := soup.Get("https://account.ccnu.edu.cn/cas/login?service=http%3A%2F%2Fone.ccnu.edu.cn%2Fcas%2Flogin_portal")
+	htmlBody, err := soup.Get("https://account.ccnu.edu.cn/cas/login?service=http%3A%2F%2Fone.ccnu.edu.cn%2Fcas%2Flogin_portal")
+	if err != nil {
+		return false
+	}
 	doc := soup.HTMLParse(htmlBody)
-	links1 := doc.Find("body", "id", "cas").FindAll("script")
+	casBody := doc.Find("body", "id", "cas")
+	if casBody.Pointer == nil {
+		return false
+	}
+	links1 := casBody.FindAll("script")
 	if len(links1) < 3 {
 		return false
 	}
@@ -21,7 +28,11 @@ func CCNULogin(studentID string, password string) bool {
 		return false
 	}
 	js := src[26:]
-	links2 := doc.Find("div", "class", "logo").FindAll("input")
+	logo := doc.Find("div", "class", "logo")
+	if logo.Pointer == nil {
+		return false
+	}
+	links2 := logo.FindAll("input")
 	if len(links2) < 3 {
 		return false
 	}
