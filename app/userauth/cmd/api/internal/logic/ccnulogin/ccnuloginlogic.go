@@ -36,6 +36,9 @@ func (l *CcnuLoginLogic) CcnuLogin(req *types.CcnuLoginReq) (resp *types.CcnuLog
 		return nil, err
 	}
 	token, err := l.getJwtToken(l.svcCtx.Config.JwtAuth.AccessSecret, time.Now().Unix(), l.svcCtx.Config.JwtAuth.AccessExpire, ccnuLoginResp.UserinfoID)
+	if err != nil {
+		return nil, err
+	}
 	return &types.CcnuLoginResp{
 		Token: token,
 	}, nil
