@@ -48,7 +48,9 @@ func (l *GetSubmissionCommentLogic) GetSubmissionComment(req *types.GetSubmissio
 	}
 	for _, comment := range comments {
 		if _, ok := commentMap[comment.CommentID]; !ok {
-			tree[commentMap[comment.FatherID]].Replies = append(tree[commentMap[comment.FatherID]].Replies, comment)
+			if idx, ok := commentMap[comment.FatherID]; ok {
+				tree[idx].Replies = append(tree[idx].Replies, comment)
+			}
 		}
 	}
 	return &types.GetSubmissionCommentResp{

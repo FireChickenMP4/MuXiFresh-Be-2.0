@@ -13,8 +13,18 @@ func CCNULogin(studentID string, password string) bool {
 	htmlBody, _ := soup.Get("https://account.ccnu.edu.cn/cas/login?service=http%3A%2F%2Fone.ccnu.edu.cn%2Fcas%2Flogin_portal")
 	doc := soup.HTMLParse(htmlBody)
 	links1 := doc.Find("body", "id", "cas").FindAll("script")
-	js := links1[2].Attrs()["src"][26:]
+	if len(links1) < 3 {
+		return false
+	}
+	src := links1[2].Attrs()["src"]
+	if len(src) < 27 {
+		return false
+	}
+	js := src[26:]
 	links2 := doc.Find("div", "class", "logo").FindAll("input")
+	if len(links2) < 3 {
+		return false
+	}
 
 	st := links2[2].Attrs()["value"]
 	jar, _ := cookiejar.New(&cookiejar.Options{})
