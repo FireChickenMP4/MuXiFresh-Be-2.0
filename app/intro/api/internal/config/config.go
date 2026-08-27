@@ -14,5 +14,6 @@ type Config struct {
 }
 
 func (c *Config) ApplyInfra() {
+	c.Infra.ApplyMiddlewares(&c.RestConf)
 	c.Infra.ApplyEtcd(&c.IntroConf.Etcd)
 }
