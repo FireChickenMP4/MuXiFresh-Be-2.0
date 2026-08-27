@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"crypto/rand"
+	"fmt"
 	"io"
 )
 
@@ -11,7 +12,7 @@ func RandomNumber(length int) string {
 	b := make([]byte, length)
 	n, err := io.ReadAtLeast(rand.Reader, b, length)
 	if n != length {
-		panic(err)
+		panic(fmt.Sprintf("crypto/rand: failed to read %d bytes: %v", length, err))
 	}
 	for i := 0; i < len(b); i++ {
 		b[i] = table[int(b[i])%len(table)]

@@ -128,6 +128,10 @@ func Exam(choice []types.ChoiceItem) ([7]int64, []model.ChoiceItem) {
 		}
 	}
 
+	if len(choice) > len(objectArr) {
+		choice = choice[:len(objectArr)]
+	}
+
 	score := [7]int64{}
 	answerTrueB := []struct {
 		TextNumber int

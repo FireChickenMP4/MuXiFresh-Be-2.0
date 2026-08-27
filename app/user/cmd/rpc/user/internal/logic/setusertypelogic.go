@@ -31,11 +31,11 @@ func (l *SetUserTypeLogic) SetUserType(in *pb.SetUserTypeReq) (*pb.SetUserTypeRe
 		UserType: in.UserType,
 	})
 
-	if update.MatchedCount == 0 {
-		return nil, fmt.Errorf("email is valid")
-	}
 	if err != nil {
 		return nil, err
+	}
+	if update.MatchedCount == 0 {
+		return nil, fmt.Errorf("email is valid")
 	}
 	return &pb.SetUserTypeResp{
 		Flag: true,

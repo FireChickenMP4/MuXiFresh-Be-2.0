@@ -46,5 +46,5 @@ func (l *GetGroupIntroLogic) GetGroupIntro(in *pb.GroupIntroReq) (*pb.GroupIntro
 			Intro: "这是一段设计组的介绍",
 		}, nil
 	}
-	return nil, nil
+	return &pb.GroupIntroResp{}, nil
 }
