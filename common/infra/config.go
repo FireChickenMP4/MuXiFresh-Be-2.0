@@ -1,6 +1,8 @@
 package infra
 
 import (
+	"reflect"
+
 	"github.com/zeromicro/go-queue/kq"
 	"github.com/zeromicro/go-zero/core/discov"
 	"github.com/zeromicro/go-zero/core/stores/redis"
@@ -16,6 +18,27 @@ type Config struct {
 	Kafka         KafkaConf
 	SMTP          SMTPConf
 	ObjectStorage ObjectStorageConf
+	Middlewares   MiddlewaresConf
+}
+
+// MiddlewaresConf mirrors go-zero's server middleware switches
+// (rest.RestConf.Middlewares and zrpc.RpcServerConf.Middlewares). Only
+// switches set to true here are injected into services; existing per-service
+// configuration is never cleared.
+type MiddlewaresConf struct {
+	Trace      bool
+	Log        bool
+	Prometheus bool
+	MaxConns   bool
+	Breaker    bool
+	Shedding   bool
+	Timeout    bool
+	Recover    bool
+	Metrics    bool
+	MaxBytes   bool
+	Gunzip     bool
+	Duration   bool
+	Stat       bool
 }
 
 type MongoDBConf struct {
@@ -87,5 +110,39 @@ func (c Config) ApplyKafka(targets ...*kq.KqConf) {
 		target.Brokers = append([]string(nil), c.Kafka.Brokers...)
 		target.Username = c.Kafka.Username
 		target.Password = c.Kafka.Password
+	}
+}
+
+// ApplyMiddlewares injects infrastructure middleware switches into the
+// services' config structs. It matches the `Middlewares` field (present in both
+// rest.RestConf and zrpc.RpcServerConf) by field name and only ever enables a
+// switch (true in infra), never disabling an explicitly configured one.
+func (c Config) ApplyMiddlewares(targets ...interface{}) {
+	mwType := reflect.TypeOf(c.Middlewares)
+	mwValue := reflect.ValueOf(c.Middlewares)
+
+	for _, target := range targets {
+		rv := reflect.ValueOf(target)
+		if rv.Kind() != reflect.Ptr || rv.IsNil() {
+			continue
+		}
+		elem := rv.Elem()
+		if elem.Kind() != reflect.Struct {
+			continue
+		}
+		mw := elem.FieldByName("Middlewares")
+		if !mw.IsValid() || mw.Kind() != reflect.Struct || !mw.CanSet() {
+			continue
+		}
+
+		for i := 0; i < mwType.NumField(); i++ {
+			if !mwValue.Field(i).Bool() {
+				continue
+			}
+			field := mw.FieldByName(mwType.Field(i).Name)
+			if field.IsValid() && field.CanSet() && field.Kind() == reflect.Bool {
+				field.SetBool(true)
+			}
+		}
 	}
 }
