@@ -10,10 +10,7 @@ import (
 
 func Md5ByString(str string) string {
 	m := md5.New()
-	_, err := io.WriteString(m, str)
-	if err != nil {
-		panic(err)
-	}
+	_, _ = io.WriteString(m, str)
 	arr := m.Sum(nil)
 	return fmt.Sprintf("%x", arr)
 }
