@@ -27,6 +27,11 @@ const (
 	allowedDocumentMimeTypes = "application/pdf;application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 	allowedClientUploadMimes = allowedImageMimeTypes + ";" + allowedDocumentMimeTypes
 	maxUploadSize            = int64(10 << 20)
+
+	// Client upload keys are scoped under this per-user prefix so a token cannot
+	// write elsewhere in the bucket. Clients must generate keys under this
+	// prefix (e.g. avatar/<userId>/<fileName>).
+	clientUploadKeyPrefix = "avatar/"
 )
 
 type Qiniu struct {
@@ -73,20 +78,20 @@ func GetQNToken(endUser string) string {
 	return putPolicy.UploadToken(mac)
 }
 
-// newClientUploadPolicy intentionally keeps bucket-level scope for
-// compatibility with deployed clients, which currently choose their own key.
-// The policy still removes the reported arbitrary-file-upload vector by
-// enforcing content detection, an image/PDF/DOCX allowlist, a size limit,
-// short expiry and insert-only semantics.
+// newClientUploadPolicy scopes the token to the caller's directory
+// (bucket:avatar/<endUser>/) via IsPrefixalScope, so a leaked token cannot
+// write outside that prefix. It keeps content detection, the image/PDF/DOCX
+// allowlist, a size limit, short expiry and insert-only semantics.
 func newClientUploadPolicy(bucket, endUser string) storage.PutPolicy {
 	return storage.PutPolicy{
-		Scope:      bucket,
-		Expires:    uploadTokenExpires,
-		InsertOnly: 1,
-		EndUser:    endUser,
-		FsizeLimit: maxUploadSize,
-		DetectMime: 1,
-		MimeLimit:  allowedClientUploadMimes,
+		Scope:           bucket + ":" + clientUploadKeyPrefix + endUser + "/",
+		IsPrefixalScope: 1,
+		Expires:         uploadTokenExpires,
+		InsertOnly:      1,
+		EndUser:         endUser,
+		FsizeLimit:      maxUploadSize,
+		DetectMime:      1,
+		MimeLimit:       allowedClientUploadMimes,
 	}
 }
 
