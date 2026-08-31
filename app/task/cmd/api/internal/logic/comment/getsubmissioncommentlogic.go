@@ -1,11 +1,14 @@
 package comment
 
 import (
+	"context"
+
 	"MuXiFresh-Be-2.0/app/task/cmd/api/internal/svc"
 	"MuXiFresh-Be-2.0/app/task/cmd/api/internal/types"
 	"MuXiFresh-Be-2.0/app/task/cmd/rpc/comment/commentclient"
-	"context"
+	"MuXiFresh-Be-2.0/common/ctxData"
 	"github.com/jinzhu/copier"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -25,7 +28,9 @@ func NewGetSubmissionCommentLogic(ctx context.Context, svcCtx *svc.ServiceContex
 }
 
 func (l *GetSubmissionCommentLogic) GetSubmissionComment(req *types.GetSubmissionCommentReq) (resp *types.GetSubmissionCommentResp, err error) {
-	getCommentResp, err := l.svcCtx.CommentClient.GetSubmissionComment(l.ctx, &commentclient.GetSubmissionCommentReq{
+	// 经 grpc metadata 注入调用者身份，供 comment-rpc 做归属校验
+	ctx := metadata.AppendToOutgoingContext(l.ctx, ctxData.CallerIDKey, ctxData.GetUserIdFromCtx(l.ctx))
+	getCommentResp, err := l.svcCtx.CommentClient.GetSubmissionComment(ctx, &commentclient.GetSubmissionCommentReq{
 		SubmissionID: req.SubmissionID,
 	})
 	if err != nil {

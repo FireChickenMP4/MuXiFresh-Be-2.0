@@ -1,9 +1,11 @@
 package logic
 
 import (
+	"context"
+	"errors"
+
 	"MuXiFresh-Be-2.0/app/form/rpc/entryformclient"
 	"MuXiFresh-Be-2.0/common/ctxData"
-	"context"
 
 	"MuXiFresh-Be-2.0/app/form/api/internal/svc"
 	"MuXiFresh-Be-2.0/app/form/api/internal/types"
@@ -27,6 +29,15 @@ func NewUpdateFormLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Update
 
 func (l *UpdateFormLogic) UpdateForm(req *types.CreateReq) (resp *types.CreateResp, err error) {
 	userId := ctxData.GetUserIdFromCtx(l.ctx)
+	userInfo, err := l.svcCtx.UserInfoModelClient.FindOne(l.ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+	// 归属校验：只能修改当前用户自己的报名表，防止按 form_id 越权修改
+	if userInfo.EntryFormID.IsZero() || req.FormId != userInfo.EntryFormID.Hex() {
+		return nil, errors.New("无权修改该报名表")
+	}
+
 	_, err = l.svcCtx.FormClient.UpdateForm(l.ctx, &entryformclient.CreateReq{
 		FormId:        req.FormId,
 		UserId:        userId,

@@ -1,10 +1,12 @@
 package logic
 
 import (
+	"context"
+	"errors"
+
 	"MuXiFresh-Be-2.0/app/schedule/rpc/scheduleclient"
 	"MuXiFresh-Be-2.0/common/ctxData"
 	"MuXiFresh-Be-2.0/common/globalKey"
-	"context"
 
 	"MuXiFresh-Be-2.0/app/schedule/api/internal/svc"
 	"MuXiFresh-Be-2.0/app/schedule/api/internal/types"
@@ -27,15 +29,21 @@ func NewCheckLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CheckLogic 
 }
 
 func (l *CheckLogic) Check(req *types.CheckReq) (resp *types.CheckResp, err error) {
-	//确定scheduleID
+	//确定scheduleID，并做归属校验：只能查询当前用户自己的进度，防止按 schedule_id 越权读取录取状态
 	userid := ctxData.GetUserIdFromCtx(l.ctx)
-	if req.ScheduleID == globalKey.Myself {
-		u, err := l.svcCtx.UserInfoClient.FindOne(l.ctx, userid)
-		if err != nil {
-			return nil, err
-		}
-		req.ScheduleID = u.ScheduleID.String()[10:34]
+	u, err := l.svcCtx.UserInfoClient.FindOne(l.ctx, userid)
+	if err != nil {
+		return nil, err
 	}
+	if req.ScheduleID == globalKey.Myself {
+		if u.ScheduleID.IsZero() {
+			return nil, errors.New("尚未创建进度")
+		}
+		req.ScheduleID = u.ScheduleID.Hex()
+	} else if u.ScheduleID.IsZero() || req.ScheduleID != u.ScheduleID.Hex() {
+		return nil, errors.New("无权查看该进度")
+	}
+
 	c, err := l.svcCtx.ScheduleClient.Check(l.ctx, &scheduleclient.CheckReq{
 		UserId:     userid,
 		ScheduleID: req.ScheduleID,

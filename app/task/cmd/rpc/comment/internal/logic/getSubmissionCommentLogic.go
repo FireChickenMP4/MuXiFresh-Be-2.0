@@ -1,10 +1,11 @@
 package logic
 
 import (
+	"context"
+
 	"MuXiFresh-Be-2.0/app/task/cmd/rpc/comment/internal/svc"
 	"MuXiFresh-Be-2.0/app/task/cmd/rpc/comment/pb"
 	"MuXiFresh-Be-2.0/common/convert"
-	"context"
 	"github.com/zeromicro/go-zero/core/logx"
 	"time"
 )
@@ -24,6 +25,14 @@ func NewGetSubmissionCommentLogic(ctx context.Context, svcCtx *svc.ServiceContex
 }
 
 func (l *GetSubmissionCommentLogic) GetSubmissionComment(in *pb.GetSubmissionCommentReq) (*pb.GetSubmissionCommentResp, error) {
+	// 调用者身份由 API 层经 grpc metadata 注入（见 getsubmissioncommentlogic.go）
+	callerID, err := callerIDFromCtx(l.ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := checkSubmissionAccess(l.ctx, l.svcCtx, callerID, in.SubmissionID); err != nil {
+		return nil, err
+	}
 
 	comments, err := l.svcCtx.CommentModel.FindBySubmissionID(l.ctx, in.SubmissionID)
 	if err != nil {

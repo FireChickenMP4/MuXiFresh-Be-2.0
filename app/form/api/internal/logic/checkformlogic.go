@@ -1,10 +1,12 @@
 package logic
 
 import (
+	"context"
+	"errors"
+
 	"MuXiFresh-Be-2.0/app/form/rpc/entryformclient"
 	"MuXiFresh-Be-2.0/common/ctxData"
 	"MuXiFresh-Be-2.0/common/globalKey"
-	"context"
 
 	"MuXiFresh-Be-2.0/app/form/api/internal/svc"
 	"MuXiFresh-Be-2.0/app/form/api/internal/types"
@@ -27,14 +29,19 @@ func NewCheckFormLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CheckFo
 }
 
 func (l *CheckFormLogic) CheckForm(req *types.CheckReq) (resp *types.CheckResp, err error) {
-	//确定formid
+	//确定formid，并做归属校验：只能查看当前用户自己的报名表
+	userid := ctxData.GetUserIdFromCtx(l.ctx)
+	userInfo, err := l.svcCtx.UserInfoModelClient.FindOne(l.ctx, userid)
+	if err != nil {
+		return nil, err
+	}
 	if req.EntryFormID == globalKey.Myself {
-		userid := ctxData.GetUserIdFromCtx(l.ctx)
-		userInfo, err := l.svcCtx.UserInfoModelClient.FindOne(l.ctx, userid)
-		if err != nil {
-			return nil, err
+		if userInfo.EntryFormID.IsZero() {
+			return nil, errors.New("尚未提交报名表")
 		}
-		req.EntryFormID = userInfo.EntryFormID.String()[10:34]
+		req.EntryFormID = userInfo.EntryFormID.Hex()
+	} else if userInfo.EntryFormID.IsZero() || req.EntryFormID != userInfo.EntryFormID.Hex() {
+		return nil, errors.New("无权查看该报名表")
 	}
 
 	r, err := l.svcCtx.FormClient.CheckForm(l.ctx, &entryformclient.CheckReq{
