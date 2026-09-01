@@ -47,6 +47,11 @@ func (l *RegisterLogic) Register(in *pb.RegisterDataReq) (*pb.RegisterDataResp, 
 		UpdateAt:   time.Now(),
 		CreateAt:   time.Now(),
 	}); err != nil {
+		// 补偿：UserAuth 写入失败时回滚已插入的 userinfo，避免孤儿 userInfo
+		// （注册两步写无事务，DB 抖动时 UserAuth 失败会留下无 auth 的 userinfo）
+		if _, delErr := l.svcCtx.UserInfoClient.Delete(l.ctx, userInfo.ID.Hex()); delErr != nil {
+			logx.WithContext(l.ctx).Errorf("register rollback userinfo %s failed: %v", userInfo.ID.Hex(), delErr)
+		}
 		return nil, err
 	}
 	return &pb.RegisterDataResp{
