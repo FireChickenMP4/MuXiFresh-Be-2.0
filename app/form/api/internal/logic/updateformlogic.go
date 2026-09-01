@@ -29,6 +29,9 @@ func NewUpdateFormLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Update
 
 func (l *UpdateFormLogic) UpdateForm(req *types.CreateReq) (resp *types.CreateResp, err error) {
 	userId := ctxData.GetUserIdFromCtx(l.ctx)
+	if userId == "" {
+		return nil, errors.New("身份缺失")
+	}
 	userInfo, err := l.svcCtx.UserInfoModelClient.FindOne(l.ctx, userId)
 	if err != nil {
 		return nil, err

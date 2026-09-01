@@ -12,6 +12,7 @@ import (
 
 	"github.com/zeromicro/go-zero/core/stores/mon"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func newReplySvcCtx(sub *taskmodel.Submission, caller *usermodel.UserInfo, father *taskmodel.Comment) *svc.ServiceContext {
@@ -158,5 +159,84 @@ func TestReplySubmissionComment_NoMetadataRejected(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("missing caller identity should be rejected")
+	}
+}
+
+func TestReplySubmissionComment_AdminFlipsStatus(t *testing.T) {
+	// 管理员回复 → submission 状态被置为 Reviewed（H-03 修复的核心语义）
+	ownerID := primitive.NewObjectID()
+	adminID := primitive.NewObjectID()
+	sub := &taskmodel.Submission{ID: primitive.NewObjectID(), UserId: ownerID}
+	father := &taskmodel.Comment{ID: primitive.NewObjectID(), SubmissionID: sub.ID, UserId: primitive.NewObjectID()}
+	var flippedStatus string
+	svcCtx := &svc.ServiceContext{
+		SubmissionModel: &fakeSubmissionModel{
+			findOneFn: func(ctx context.Context, id string) (*taskmodel.Submission, error) { return sub, nil },
+			updateFn: func(ctx context.Context, data *taskmodel.Submission) (*mongo.UpdateResult, error) {
+				flippedStatus = data.Status
+				return &mongo.UpdateResult{}, nil
+			},
+		},
+		UserInfoModel: &fakeUserInfoModel{
+			findOneFn: func(ctx context.Context, id string) (*usermodel.UserInfo, error) {
+				return &usermodel.UserInfo{UserType: globalKey.Admin}, nil
+			},
+		},
+		CommentModel: &fakeCommentModel{
+			findOneFn: func(ctx context.Context, id string) (*taskmodel.Comment, error) { return father, nil },
+			insertFn:  func(ctx context.Context, data *taskmodel.Comment) error { return nil },
+		},
+	}
+	l := NewReplySubmissionCommentLogic(callerCtx(t, adminID.Hex()), svcCtx)
+
+	_, err := l.ReplySubmissionComment(&pb.ReplySubmissionCommentReq{
+		SubmissionID: sub.ID.Hex(),
+		FatherID:     father.ID.Hex(),
+		Content:      "已审阅",
+	})
+	if err != nil {
+		t.Fatalf("admin reply should pass, got err: %v", err)
+	}
+	if flippedStatus != globalKey.Reviewed {
+		t.Fatalf("admin reply should set status Reviewed, got %q", flippedStatus)
+	}
+}
+
+func TestReplySubmissionComment_OwnerDoesNotFlip(t *testing.T) {
+	// 普通提交者本人回复 → 不翻转 submission 状态（H-03 修复：仅管理员可置已审阅）
+	ownerID := primitive.NewObjectID()
+	sub := &taskmodel.Submission{ID: primitive.NewObjectID(), UserId: ownerID}
+	father := &taskmodel.Comment{ID: primitive.NewObjectID(), SubmissionID: sub.ID, UserId: primitive.NewObjectID()}
+	updateCalled := false
+	svcCtx := &svc.ServiceContext{
+		SubmissionModel: &fakeSubmissionModel{
+			findOneFn: func(ctx context.Context, id string) (*taskmodel.Submission, error) { return sub, nil },
+			updateFn: func(ctx context.Context, data *taskmodel.Submission) (*mongo.UpdateResult, error) {
+				updateCalled = true
+				return &mongo.UpdateResult{}, nil
+			},
+		},
+		UserInfoModel: &fakeUserInfoModel{
+			findOneFn: func(ctx context.Context, id string) (*usermodel.UserInfo, error) {
+				return &usermodel.UserInfo{}, nil
+			},
+		},
+		CommentModel: &fakeCommentModel{
+			findOneFn: func(ctx context.Context, id string) (*taskmodel.Comment, error) { return father, nil },
+			insertFn:  func(ctx context.Context, data *taskmodel.Comment) error { return nil },
+		},
+	}
+	l := NewReplySubmissionCommentLogic(callerCtx(t, ownerID.Hex()), svcCtx)
+
+	_, err := l.ReplySubmissionComment(&pb.ReplySubmissionCommentReq{
+		SubmissionID: sub.ID.Hex(),
+		FatherID:     father.ID.Hex(),
+		Content:      "修改了",
+	})
+	if err != nil {
+		t.Fatalf("owner reply should pass, got err: %v", err)
+	}
+	if updateCalled {
+		t.Fatal("owner reply should NOT flip submission status")
 	}
 }

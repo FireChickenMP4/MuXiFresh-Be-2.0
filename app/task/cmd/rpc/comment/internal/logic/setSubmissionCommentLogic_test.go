@@ -11,6 +11,7 @@ import (
 	"MuXiFresh-Be-2.0/common/globalKey"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestSetSubmissionComment_AdminPasses(t *testing.T) {
@@ -115,5 +116,41 @@ func TestSetSubmissionComment_NoMetadataRejected(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("missing caller identity should be rejected")
+	}
+}
+
+func TestSetSubmissionComment_AdminFlipsStatus(t *testing.T) {
+	// 管理员发根评论 → submission 状态被置为 Reviewed
+	adminID := primitive.NewObjectID()
+	sub := &taskmodel.Submission{ID: primitive.NewObjectID(), UserId: primitive.NewObjectID()}
+	var flippedStatus string
+	svcCtx := &svc.ServiceContext{
+		SubmissionModel: &fakeSubmissionModel{
+			findOneFn: func(ctx context.Context, id string) (*taskmodel.Submission, error) { return sub, nil },
+			updateFn: func(ctx context.Context, data *taskmodel.Submission) (*mongo.UpdateResult, error) {
+				flippedStatus = data.Status
+				return &mongo.UpdateResult{}, nil
+			},
+		},
+		UserInfoModel: &fakeUserInfoModel{
+			findOneFn: func(ctx context.Context, id string) (*usermodel.UserInfo, error) {
+				return &usermodel.UserInfo{UserType: globalKey.Admin}, nil
+			},
+		},
+		CommentModel: &fakeCommentModel{
+			insertFn: func(ctx context.Context, data *taskmodel.Comment) error { return nil },
+		},
+	}
+	l := NewSetSubmissionCommentLogic(callerCtx(t, adminID.Hex()), svcCtx)
+
+	_, err := l.SetSubmissionComment(&pb.SetSubmissionCommentReq{
+		SubmissionID: sub.ID.Hex(),
+		Content:      "批注",
+	})
+	if err != nil {
+		t.Fatalf("admin set comment should pass, got err: %v", err)
+	}
+	if flippedStatus != globalKey.Reviewed {
+		t.Fatalf("admin comment should set status Reviewed, got %q", flippedStatus)
 	}
 }
