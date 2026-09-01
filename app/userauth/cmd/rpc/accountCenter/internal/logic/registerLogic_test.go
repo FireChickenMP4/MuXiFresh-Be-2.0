@@ -79,3 +79,85 @@ func TestRegister_RollsBackUserInfoOnUserAuthFail(t *testing.T) {
 		t.Fatalf("rollback should delete the inserted userinfo, inserted=%q deleted=%q", insertedID, deletedID)
 	}
 }
+
+func TestRegister_UserAuthFailDeleteFail(t *testing.T) {
+	// 补偿删除也失败时：仍返回原始 UserAuth 错误（删除失败仅记日志，不吞 err）
+	var deleteCalled bool
+	userInfoClient := &fakeRegisterUserInfoModel{
+		insertFn: func(ctx context.Context, data *model.UserInfo) error {
+			data.ID = primitive.NewObjectID()
+			return nil
+		},
+		deleteFn: func(ctx context.Context, id string) (int64, error) {
+			deleteCalled = true
+			return 0, errors.New("delete failed")
+		},
+	}
+	authErr := errors.New("mongo down")
+	userAuthClient := &fakeRegisterUserAuthModel{
+		insertFn: func(ctx context.Context, data *model.UserAuth) error {
+			return authErr
+		},
+	}
+	svcCtx := &svc.ServiceContext{
+		Config: config.Config{
+			DefaultUserInfo: struct {
+				Avatar   string
+				NickName string
+			}{Avatar: "a", NickName: "n"},
+		},
+		UserInfoClient: userInfoClient,
+		UserAuthClient: userAuthClient,
+	}
+	l := NewRegisterLogic(context.Background(), svcCtx)
+
+	_, err := l.Register(&pb.RegisterDataReq{Email: "y@y.com", Password: "p"})
+	if err != authErr {
+		t.Fatalf("original UserAuth error should be propagated even if rollback delete fails, got: %v", err)
+	}
+	if !deleteCalled {
+		t.Fatal("rollback delete should have been attempted")
+	}
+}
+
+func TestRegister_SuccessNoRollback(t *testing.T) {
+	// UserAuth 成功时：不触发 Delete，返回正常 ID
+	var deleteCalled bool
+	userInfoClient := &fakeRegisterUserInfoModel{
+		insertFn: func(ctx context.Context, data *model.UserInfo) error {
+			data.ID = primitive.NewObjectID()
+			return nil
+		},
+		deleteFn: func(ctx context.Context, id string) (int64, error) {
+			deleteCalled = true
+			return 1, nil
+		},
+	}
+	userAuthClient := &fakeRegisterUserAuthModel{
+		insertFn: func(ctx context.Context, data *model.UserAuth) error {
+			return nil
+		},
+	}
+	svcCtx := &svc.ServiceContext{
+		Config: config.Config{
+			DefaultUserInfo: struct {
+				Avatar   string
+				NickName string
+			}{Avatar: "a", NickName: "n"},
+		},
+		UserInfoClient: userInfoClient,
+		UserAuthClient: userAuthClient,
+	}
+	l := NewRegisterLogic(context.Background(), svcCtx)
+
+	resp, err := l.Register(&pb.RegisterDataReq{Email: "z@z.com", Password: "p"})
+	if err != nil {
+		t.Fatalf("successful register should not error, got: %v", err)
+	}
+	if deleteCalled {
+		t.Fatal("rollback delete should NOT be called on success")
+	}
+	if resp == nil || resp.ID == "" {
+		t.Fatal("successful register should return userinfo ID")
+	}
+}
