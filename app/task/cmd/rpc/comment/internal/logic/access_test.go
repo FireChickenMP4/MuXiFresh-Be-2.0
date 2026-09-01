@@ -62,8 +62,9 @@ func newTestSvcCtx(sub *taskmodel.Submission, subErr error, caller *usermodel.Us
 func TestCheckSubmissionAccess_OwnerPasses(t *testing.T) {
 	ownerID := primitive.NewObjectID()
 	sub := &taskmodel.Submission{ID: ownerID, UserId: ownerID}
-	// 本人分支不应查 caller（caller 为 nil 也不 panic）
-	svcCtx := newTestSvcCtx(sub, nil, nil, nil)
+	// 提交者本人（普通用户）：通过且 userType 为空
+	caller := &usermodel.UserInfo{UserType: ""}
+	svcCtx := newTestSvcCtx(sub, nil, caller, nil)
 
 	ut, err := checkSubmissionAccess(context.Background(), svcCtx, ownerID.Hex(), ownerID.Hex())
 	if err != nil {
@@ -71,6 +72,22 @@ func TestCheckSubmissionAccess_OwnerPasses(t *testing.T) {
 	}
 	if ut != "" {
 		t.Fatalf("owner userType should be empty (non-admin), got %q", ut)
+	}
+}
+
+func TestCheckSubmissionAccess_AdminOwnerPasses(t *testing.T) {
+	ownerID := primitive.NewObjectID()
+	sub := &taskmodel.Submission{ID: ownerID, UserId: ownerID}
+	// 提交者本人且为管理员：通过且保留管理员语义
+	caller := &usermodel.UserInfo{UserType: globalKey.Admin}
+	svcCtx := newTestSvcCtx(sub, nil, caller, nil)
+
+	ut, err := checkSubmissionAccess(context.Background(), svcCtx, ownerID.Hex(), ownerID.Hex())
+	if err != nil {
+		t.Fatalf("admin owner should pass, got err: %v", err)
+	}
+	if ut != globalKey.Admin {
+		t.Fatalf("admin owner userType should be admin, got %q", ut)
 	}
 }
 
@@ -178,13 +195,19 @@ func TestCallerIDFromCtx(t *testing.T) {
 	if _, err := callerIDFromCtx(ctx); err == nil {
 		t.Fatal("empty caller id should be rejected")
 	}
-	// 正常 → 返回
+	// 非 ObjectID 格式 → 拒绝
 	ctx = metadata.NewIncomingContext(context.Background(), metadata.Pairs(callerIDKey, "abc123"))
+	if _, err := callerIDFromCtx(ctx); err == nil {
+		t.Fatal("non-objectid caller id should be rejected")
+	}
+	// 正常 → 返回
+	validID := primitive.NewObjectID().Hex()
+	ctx = metadata.NewIncomingContext(context.Background(), metadata.Pairs(callerIDKey, validID))
 	id, err := callerIDFromCtx(ctx)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
-	if id != "abc123" {
-		t.Fatalf("expected abc123, got %q", id)
+	if id != validID {
+		t.Fatalf("expected %q, got %q", validID, id)
 	}
 }

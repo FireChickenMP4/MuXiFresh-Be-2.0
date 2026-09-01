@@ -31,6 +31,9 @@ func NewCheckLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CheckLogic 
 func (l *CheckLogic) Check(req *types.CheckReq) (resp *types.CheckResp, err error) {
 	//确定scheduleID，并做归属校验：只能查询当前用户自己的进度，防止按 schedule_id 越权读取录取状态
 	userid := ctxData.GetUserIdFromCtx(l.ctx)
+	if userid == "" {
+		return nil, errors.New("身份缺失")
+	}
 	u, err := l.svcCtx.UserInfoClient.FindOne(l.ctx, userid)
 	if err != nil {
 		return nil, err

@@ -57,6 +57,11 @@ func TestSetSubmissionComment_OwnerRejected(t *testing.T) {
 		SubmissionModel: &fakeSubmissionModel{
 			findOneFn: func(ctx context.Context, id string) (*taskmodel.Submission, error) { return sub, nil },
 		},
+		UserInfoModel: &fakeUserInfoModel{
+			findOneFn: func(ctx context.Context, id string) (*usermodel.UserInfo, error) {
+				return &usermodel.UserInfo{}, nil
+			},
+		},
 		CommentModel: &fakeCommentModel{},
 	}
 	l := NewSetSubmissionCommentLogic(callerCtx(t, ownerID.Hex()), svcCtx)

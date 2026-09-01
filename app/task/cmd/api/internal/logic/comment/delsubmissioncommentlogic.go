@@ -47,6 +47,9 @@ func (l *DelSubmissionCommentLogic) DelSubmissionComment(req *types.DelSubmissio
 	delCommentResp, err := l.svcCtx.CommentClient.DelSubmissionComment(ctx, &commentclient.DelSubmissionCommentReq{
 		CommentID: req.CommentID,
 	})
+	if err != nil {
+		return nil, err
+	}
 	return &types.DelSubmissionCommentResp{
 		Flag: delCommentResp.Flag,
 	}, nil

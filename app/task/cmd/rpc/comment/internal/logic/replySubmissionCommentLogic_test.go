@@ -38,6 +38,9 @@ func TestReplySubmissionComment_OwnerPasses(t *testing.T) {
 		SubmissionModel: &fakeSubmissionModel{
 			findOneFn: func(ctx context.Context, id string) (*taskmodel.Submission, error) { return sub, nil },
 		},
+		UserInfoModel: &fakeUserInfoModel{
+			findOneFn: func(ctx context.Context, id string) (*usermodel.UserInfo, error) { return &usermodel.UserInfo{}, nil },
+		},
 		CommentModel: &fakeCommentModel{
 			findOneFn: func(ctx context.Context, id string) (*taskmodel.Comment, error) { return father, nil },
 			insertFn: func(ctx context.Context, data *taskmodel.Comment) error {
@@ -107,6 +110,9 @@ func TestReplySubmissionComment_FatherNotFound(t *testing.T) {
 		SubmissionModel: &fakeSubmissionModel{
 			findOneFn: func(ctx context.Context, id string) (*taskmodel.Submission, error) { return sub, nil },
 		},
+		UserInfoModel: &fakeUserInfoModel{
+			findOneFn: func(ctx context.Context, id string) (*usermodel.UserInfo, error) { return &usermodel.UserInfo{}, nil },
+		},
 		CommentModel: &fakeCommentModel{
 			findOneFn: func(ctx context.Context, id string) (*taskmodel.Comment, error) { return nil, mon.ErrNotFound },
 		},
@@ -128,7 +134,7 @@ func TestReplySubmissionComment_FatherCrossSubmissionRejected(t *testing.T) {
 	sub := &taskmodel.Submission{ID: primitive.NewObjectID(), UserId: ownerID}
 	// father 属于另一个 submission → 跨提交伪造回复被拒
 	father := &taskmodel.Comment{ID: primitive.NewObjectID(), SubmissionID: primitive.NewObjectID(), UserId: primitive.NewObjectID()}
-	svcCtx := newReplySvcCtx(sub, nil, father)
+	svcCtx := newReplySvcCtx(sub, &usermodel.UserInfo{}, father)
 	l := NewReplySubmissionCommentLogic(callerCtx(t, ownerID.Hex()), svcCtx)
 
 	_, err := l.ReplySubmissionComment(&pb.ReplySubmissionCommentReq{

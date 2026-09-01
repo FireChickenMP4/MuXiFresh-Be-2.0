@@ -31,6 +31,9 @@ func NewCheckFormLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CheckFo
 func (l *CheckFormLogic) CheckForm(req *types.CheckReq) (resp *types.CheckResp, err error) {
 	//确定formid，并做归属校验：只能查看当前用户自己的报名表
 	userid := ctxData.GetUserIdFromCtx(l.ctx)
+	if userid == "" {
+		return nil, errors.New("身份缺失")
+	}
 	userInfo, err := l.svcCtx.UserInfoModelClient.FindOne(l.ctx, userid)
 	if err != nil {
 		return nil, err
