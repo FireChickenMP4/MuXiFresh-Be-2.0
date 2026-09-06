@@ -1,9 +1,11 @@
 package comment
 
 import (
+	"context"
+
 	"MuXiFresh-Be-2.0/app/task/cmd/rpc/comment/commentclient"
 	"MuXiFresh-Be-2.0/common/ctxData"
-	"context"
+	"google.golang.org/grpc/metadata"
 
 	"MuXiFresh-Be-2.0/app/task/cmd/api/internal/svc"
 	"MuXiFresh-Be-2.0/app/task/cmd/api/internal/types"
@@ -26,8 +28,9 @@ func NewSetSubmissionCommentLogic(ctx context.Context, svcCtx *svc.ServiceContex
 }
 
 func (l *SetSubmissionCommentLogic) SetSubmissionComment(req *types.SetSubmissionCommentReq) (resp *types.SetSubmissionCommentResp, err error) {
-	setCommentResp, err := l.svcCtx.CommentClient.SetSubmissionComment(l.ctx, &commentclient.SetSubmissionCommentReq{
-		UserId:       ctxData.GetUserIdFromCtx(l.ctx),
+	// 经 grpc metadata 注入调用者身份，供 comment-rpc 做归属校验
+	ctx := metadata.AppendToOutgoingContext(l.ctx, ctxData.CallerIDKey, ctxData.GetUserIdFromCtx(l.ctx))
+	setCommentResp, err := l.svcCtx.CommentClient.SetSubmissionComment(ctx, &commentclient.SetSubmissionCommentReq{
 		SubmissionID: req.SubmissionID,
 		Content:      req.Content,
 	})

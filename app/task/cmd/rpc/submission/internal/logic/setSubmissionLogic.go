@@ -1,11 +1,13 @@
 package logic
 
 import (
+	formmodel "MuXiFresh-Be-2.0/app/form/model"
 	"MuXiFresh-Be-2.0/app/task/model"
 	"MuXiFresh-Be-2.0/common/globalKey"
 	"context"
-	"fmt"
+	"errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"strings"
 	"time"
 
 	"MuXiFresh-Be-2.0/app/task/cmd/rpc/submission/internal/svc"
@@ -44,11 +46,35 @@ func (l *SetSubmissionLogic) SetSubmission(in *pb.SetSubmissionReq) (*pb.SetSubm
 	if err != nil {
 		return nil, err
 	}
+	// 组别/身份校验（N-L3）：白名单制——
+	// freshman 仅可提交本组作业；normal（管理员录取设置的老成员，可能无报名表）
+	// /admin/super_admin 豁免；其余未知类型一律拒绝（fail closed）
+	userInfo, err := l.svcCtx.UserInfoModel.FindOne(l.ctx, in.UserId)
+	if err != nil {
+		return nil, err
+	}
+	switch userInfo.UserType {
+	case globalKey.Normal, globalKey.Admin, globalKey.SuperAdmin:
+		// 豁免
+	case globalKey.Freshman:
+		entryForm, err := l.svcCtx.EntryFormModel.FindOneByUserId(l.ctx, in.UserId)
+		if err != nil {
+			if errors.Is(err, formmodel.ErrNotFound) {
+				return nil, errors.New("尚未报名，无权提交作业")
+			}
+			return nil, err
+		}
+		if !strings.EqualFold(entryForm.Group, assignment.Group) {
+			return nil, errors.New("无权提交该组的作业")
+		}
+	default:
+		return nil, errors.New("无权提交作业")
+	}
+
 	dl, err := time.ParseInLocation("2006-01-02 15:04:05", assignment.Deadline, time.Local)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("time", dl)
 	if !dl.IsZero() && time.Now().After(dl) {
 		return &pb.SetSubmissionResp{
 			Flag: false,
