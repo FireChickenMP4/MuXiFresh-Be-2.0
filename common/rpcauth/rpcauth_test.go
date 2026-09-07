@@ -75,7 +75,7 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	}
 }
 
-func TestUnaryServerInterceptorReflectionMethodNotBypassed(t *testing.T) {
+func TestUnaryServerInterceptorNoMethodBypassed(t *testing.T) {
 	interceptor, err := UnaryServerInterceptor(testToken)
 	if err != nil {
 		t.Fatalf("UnaryServerInterceptor() error = %v", err)
@@ -85,15 +85,15 @@ func TestUnaryServerInterceptorReflectionMethodNotBypassed(t *testing.T) {
 		return "ok", nil
 	}
 
-	reflectionMethods := []string{
-		"/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
+	methods := []string{
+		"/grpc.health.v1.Health/Check",
 		"/grpc.reflection.v1.ServerReflection/ServerReflectionInfo",
 	}
-	for _, method := range reflectionMethods {
+	for _, method := range methods {
 		serverInfo := &grpc.UnaryServerInfo{FullMethod: method}
 		_, err := interceptor(context.Background(), nil, serverInfo, handler)
 		if err == nil || status.Code(err) != codes.Unauthenticated {
-			t.Errorf("reflection method %s should not bypass auth, got err = %v", method, err)
+			t.Errorf("method %s without token should be rejected, got err = %v", method, err)
 		}
 	}
 }
