@@ -21,7 +21,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		panic(err)
 	}
 	rpcOpts := []zrpc.ClientOption{
-		zrpc.WithDialOption(grpc.WithUnaryInterceptor(clientInterceptor)),
+		zrpc.WithDialOption(grpc.WithChainUnaryInterceptor(clientInterceptor)),
 	}
 
 	return &ServiceContext{

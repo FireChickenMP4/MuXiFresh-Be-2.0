@@ -20,6 +20,7 @@ var ErrMissingToken = errors.New("rpcauth: token must not be empty")
 
 // UnaryServerInterceptor 返回校验共享密钥的 unary server interceptor。
 // 每个 unary 请求必须携带 metadata MetadataKey 且值与 token 常量时间相等，否则拒绝。
+// 注意：本 interceptor 只覆盖 unary 调用，新增 stream RPC 方法需另配 stream interceptor。
 func UnaryServerInterceptor(token string) (grpc.UnaryServerInterceptor, error) {
 	if token == "" {
 		return nil, ErrMissingToken
@@ -27,15 +28,6 @@ func UnaryServerInterceptor(token string) (grpc.UnaryServerInterceptor, error) {
 
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler) (any, error) {
-		// Reflection 的 ServerReflectionInfo 实际是 bidi streaming 方法，不经过本
-		// unary interceptor（本项目未注册 stream interceptor）；此放行分支仅为防御
-		// 未来可能的 unary 化调用，当前不可达。注意：任何新增 stream 方法需另配
-		// stream interceptor，否则匿名可达。
-		if info.FullMethod == "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo" ||
-			info.FullMethod == "/grpc.reflection.v1.ServerReflection/ServerReflectionInfo" {
-			return handler(ctx, req)
-		}
-
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			return nil, status.Error(codes.Unauthenticated, "unauthenticated")

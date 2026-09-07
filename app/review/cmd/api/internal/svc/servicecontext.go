@@ -26,7 +26,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		panic(err)
 	}
 	rpcOpts := []zrpc.ClientOption{
-		zrpc.WithDialOption(grpc.WithUnaryInterceptor(clientInterceptor)),
+		zrpc.WithDialOption(grpc.WithChainUnaryInterceptor(clientInterceptor)),
 	}
 
 	if err := EnsureReviewIndexes(c.Infra.MongoDB.URL, c.Infra.MongoDB.DB); err != nil {
